@@ -1,0 +1,4 @@
+# Keep only the main apps in the root repo
+/cliq/
+/*.md
+/*.MD

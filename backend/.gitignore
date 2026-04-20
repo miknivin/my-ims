@@ -1,0 +1,27 @@
+# Build output
+bin/
+obj/
+
+# IDE and user-specific files
+.vs/
+.vscode/
+*.user
+*.rsuser
+*.suo
+
+# ASP.NET Core local run settings
+Properties/launchSettings.json
+
+# Logs
+logs/
+*.log
+
+# Local environment and secrets
+.env
+.env.*
+appsettings.Local.json
+appsettings.*.local.json
+
+# Test results and coverage
+TestResults/
+coverage/
