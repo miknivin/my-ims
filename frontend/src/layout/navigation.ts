@@ -22,7 +22,8 @@ export const isNavLeafActive = (
 ): boolean =>
   leaf.path
     ? isPathActive(leaf.path)
-    : (leaf.items?.some((item) => isNavLeafActive(item, isPathActive)) ?? false);
+    : (leaf.items?.some((item) => isNavLeafActive(item, isPathActive)) ??
+      false);
 
 export const isNavGroupActive = (
   group: AppNavGroup,
@@ -30,7 +31,8 @@ export const isNavGroupActive = (
 ): boolean =>
   group.path
     ? isPathActive(group.path)
-    : (group.items?.some((item) => isNavLeafActive(item, isPathActive)) ?? false);
+    : (group.items?.some((item) => isNavLeafActive(item, isPathActive)) ??
+      false);
 
 export const isNavItemActive = (
   item: AppNavItem,
@@ -38,7 +40,8 @@ export const isNavItemActive = (
 ): boolean =>
   item.path
     ? isPathActive(item.path)
-    : (item.groups?.some((group) => isNavGroupActive(group, isPathActive)) ?? false);
+    : (item.groups?.some((group) => isNavGroupActive(group, isPathActive)) ??
+      false);
 
 export type MasterCard = {
   title: string;
@@ -77,9 +80,26 @@ export const appNavItems: AppNavItem[] = [
         ],
       },
       {
+        name: "Invoices",
+        items: [
+          { name: "Purchase Invoice", path: "/operations/purchase-invoice" },
+          { name: "Sales Invoice", path: "/operations/sales-invoice" },
+        ],
+      },
+      {
+        name: "Payments",
+        items: [
+          { name: "Bill Wise Receipt", path: "/operations/customer-receipts" },
+          { name: "Bill Wise Payment", path: "/operations/supplier-payments" },
+        ],
+      },
+      {
         name: "Inventory",
         items: [
-          { name: "Goods Receipt (GRN)", path: "/operations/goods-receipt-note" },
+          {
+            name: "Goods Receipt (GRN)",
+            path: "/operations/goods-receipt-note",
+          },
           { name: "Stock Adjustment", path: "/operations/stock-adjustment" },
           { name: "Stock Transfer", path: "/operations/stock-transfer" },
         ],
@@ -113,20 +133,6 @@ export const appNavItems: AppNavItem[] = [
               },
             ],
           },
-        ],
-      },
-      {
-        name: "Invoices",
-        items: [
-          { name: "Purchase Invoice", path: "/operations/purchase-invoice" },
-          { name: "Sales Invoice", path: "/operations/sales-invoice" },
-        ],
-      },
-      {
-        name: "Payments",
-        items: [
-          { name: "Bill Wise Receipt", path: "/operations/customer-receipts" },
-          { name: "Bill Wise Payment", path: "/operations/supplier-payments" },
         ],
       },
     ],

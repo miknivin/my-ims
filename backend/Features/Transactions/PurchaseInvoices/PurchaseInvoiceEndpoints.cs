@@ -1,4 +1,6 @@
 using backend.Features.Masters.Currencies;
+using backend.Features.Inventory;
+using backend.Features.Inventory.GoodsReceiptNotes;
 using backend.Features.Masters.Ledgers;
 using backend.Features.Masters.Products;
 using backend.Features.Masters.Uoms;
@@ -19,8 +21,7 @@ public static class PurchaseInvoiceEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateStatusAsync);
 
         return app;
     }
@@ -97,92 +98,111 @@ public static class PurchaseInvoiceEndpoints
             Items = buildResult.Items,
             Additions = buildResult.Additions,
             Footer = buildResult.Footer,
-            Status = PurchaseInvoiceStatus.Draft,
+            Status = ParseStatus(request.Status),
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         };
 
         dbContext.PurchaseInvoices.Add(purchaseInvoice);
+        if (purchaseInvoice.Status == PurchaseInvoiceStatus.Submitted)
+        {
+            var stockError = await ApplySubmissionStockEffectsAsync(dbContext, purchaseInvoice, cancellationToken);
+            if (stockError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, stockError, null));
+            }
+
+            var journalError = await PurchaseInvoiceJournalPosting.PostAsync(
+                dbContext,
+                purchaseInvoice,
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var created = await BuildQuery(dbContext).FirstAsync(current => current.Id == purchaseInvoice.Id, cancellationToken);
         return TypedResults.Created($"/api/transactions/purchase-invoices/{purchaseInvoice.Id}", new ApiResponse<PurchaseInvoiceDto>(true, "Purchase invoice created successfully.", PurchaseInvoiceDto.FromEntity(created)));
     }
 
-    private static async Task<IResult> UpdateAsync(Guid id, UpdatePurchaseInvoiceRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateStatusAsync(Guid id, UpdatePurchaseInvoiceStatusRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
     {
-        var buildResult = BuildPurchaseInvoiceRequest(request.SourceRef, request.Document, request.VendorInformation, request.FinancialDetails, request.ProductInformation, request.General, request.Items, request.Additions, request.Footer);
-        if (buildResult.Error is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
-        }
-
         var purchaseInvoice = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (purchaseInvoice is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase invoice not found.", null));
         }
 
-        if (await dbContext.PurchaseInvoices.AnyAsync(current => current.Id != id && current.Document.No == buildResult.Document.No, cancellationToken))
+        var nextStatus = ParseStatus(request.Status);
+        if (purchaseInvoice.Status == nextStatus)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Purchase invoice number already exists.", null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<PurchaseInvoiceDto>(true, "Purchase invoice updated successfully.", PurchaseInvoiceDto.FromEntity(unchanged)));
         }
 
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, cancellationToken);
-        if (resolutionError is not null)
+        var transitionError = ValidateStatusTransition(purchaseInvoice.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        var settledAmount = Math.Max(
-            0,
-            Math.Round(
-                purchaseInvoice.Footer.NetTotal - purchaseInvoice.FinancialDetails.Balance,
-                2,
-                MidpointRounding.AwayFromZero));
-        buildResult.FinancialDetails.Balance = Math.Max(
-            0,
-            Math.Round(
-                buildResult.Footer.NetTotal - settledAmount,
-                2,
-                MidpointRounding.AwayFromZero));
+        if (nextStatus == PurchaseInvoiceStatus.Submitted)
+        {
+            var stockError = await ApplySubmissionStockEffectsAsync(dbContext, purchaseInvoice, cancellationToken);
+            if (stockError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, stockError, null));
+            }
 
-        purchaseInvoice.SourceRef = buildResult.SourceRef;
-        purchaseInvoice.Document = buildResult.Document;
-        purchaseInvoice.VendorInformation = buildResult.VendorInformation;
-        purchaseInvoice.FinancialDetails = buildResult.FinancialDetails;
-        purchaseInvoice.ProductInformation = buildResult.ProductInformation;
-        purchaseInvoice.General = buildResult.General;
-        purchaseInvoice.Footer = buildResult.Footer;
-        purchaseInvoice.Status = string.IsNullOrWhiteSpace(request.Status) ? purchaseInvoice.Status : ParseStatus(request.Status);
+            var journalError = await PurchaseInvoiceJournalPosting.PostAsync(
+                dbContext,
+                purchaseInvoice,
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
+        }
+        else if (purchaseInvoice.Status == PurchaseInvoiceStatus.Submitted && nextStatus == PurchaseInvoiceStatus.Cancelled)
+        {
+            if (purchaseInvoice.SourceRef.Type == PurchaseInvoiceReferenceType.Direct)
+            {
+                if (await InventoryPostingService.HasConsumedLayersAsync(dbContext, StockSourceTypes.PurchaseInvoice, purchaseInvoice.Id, cancellationToken))
+                {
+                    return TypedResults.BadRequest(new ApiResponse<object>(false, "Submitted purchase invoice cannot be cancelled after its stock has been issued.", null));
+                }
+            }
+            else if (purchaseInvoice.SourceRef.Type == PurchaseInvoiceReferenceType.GoodsReceipt)
+            {
+                if (await InventoryPostingService.HasPostRevaluationConsumptionAsync(dbContext, StockSourceTypes.PurchaseInvoice, purchaseInvoice.Id, cancellationToken))
+                {
+                    return TypedResults.BadRequest(new ApiResponse<object>(false, "Submitted purchase invoice cannot be cancelled after revalued stock has been issued.", null));
+                }
+            }
+
+            await InventoryPostingService.RevertSourceAsync(dbContext, StockSourceTypes.PurchaseInvoice, purchaseInvoice.Id, cancellationToken);
+
+            var journalError = await PurchaseInvoiceJournalPosting.ReverseAsync(
+                dbContext,
+                purchaseInvoice.Id,
+                DateOnly.FromDateTime(DateTime.UtcNow),
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
+        }
+
+        purchaseInvoice.Status = nextStatus;
         purchaseInvoice.UpdatedAtUtc = DateTime.UtcNow;
-
-        dbContext.RemoveRange(purchaseInvoice.Items);
-        purchaseInvoice.Items = buildResult.Items;
-        dbContext.RemoveRange(purchaseInvoice.Additions);
-        purchaseInvoice.Additions = buildResult.Additions;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
         return TypedResults.Ok(new ApiResponse<PurchaseInvoiceDto>(true, "Purchase invoice updated successfully.", PurchaseInvoiceDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var purchaseInvoice = await dbContext.PurchaseInvoices
-            .Include(current => current.Items)
-            .Include(current => current.Additions)
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (purchaseInvoice is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase invoice not found.", null));
-        }
-
-        dbContext.PurchaseInvoices.Remove(purchaseInvoice);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Purchase invoice deleted successfully.", null));
     }
 
     private static PurchaseInvoiceBuildResult BuildPurchaseInvoiceRequest(
@@ -264,6 +284,11 @@ public static class PurchaseInvoiceEndpoints
         if (sourceRef.Type != PurchaseInvoiceReferenceType.Direct && string.IsNullOrWhiteSpace(sourceRef.ReferenceNo))
         {
             return PurchaseInvoiceBuildResult.Invalid("Reference number is required for the selected source type.");
+        }
+
+        if (sourceRef.Type == PurchaseInvoiceReferenceType.GoodsReceipt && sourceRef.ReferenceId is null)
+        {
+            return PurchaseInvoiceBuildResult.Invalid("Goods receipt reference is required for the selected source type.");
         }
 
         if (itemsRequest is null || itemsRequest.Count == 0)
@@ -401,6 +426,20 @@ public static class PurchaseInvoiceEndpoints
             if (string.IsNullOrWhiteSpace(buildResult.SourceRef.ReferenceNo))
             {
                 buildResult.SourceRef.ReferenceNo = purchaseOrder.OrderDetails.No;
+            }
+        }
+        else if (buildResult.SourceRef.Type == PurchaseInvoiceReferenceType.GoodsReceipt && buildResult.SourceRef.ReferenceId is not null)
+        {
+            var goodsReceiptNote = await dbContext.GoodsReceiptNotes
+                .FirstOrDefaultAsync(current => current.Id == buildResult.SourceRef.ReferenceId.Value, cancellationToken);
+            if (goodsReceiptNote is null)
+            {
+                return "Selected goods receipt reference does not exist.";
+            }
+
+            if (string.IsNullOrWhiteSpace(buildResult.SourceRef.ReferenceNo))
+            {
+                buildResult.SourceRef.ReferenceNo = goodsReceiptNote.Document.No;
             }
         }
 
@@ -569,11 +608,186 @@ public static class PurchaseInvoiceEndpoints
 
         return value.Trim() switch
         {
+            "Created" => PurchaseInvoiceStatus.Submitted,
             "Submitted" => PurchaseInvoiceStatus.Submitted,
             "Cancelled" => PurchaseInvoiceStatus.Cancelled,
             _ => PurchaseInvoiceStatus.Draft
         };
     }
+
+    private static async Task<string?> ApplySubmissionStockEffectsAsync(
+        AppDbContext dbContext,
+        PurchaseInvoice purchaseInvoice,
+        CancellationToken cancellationToken)
+    {
+        var inventorySettings = await InventorySettingsResolver.GetEffectiveSettingsAsync(dbContext, cancellationToken);
+
+        return purchaseInvoice.SourceRef.Type switch
+        {
+            PurchaseInvoiceReferenceType.Direct => await InventoryPostingService.ApplyReceiptsAsync(
+                dbContext,
+                inventorySettings,
+                StockSourceTypes.PurchaseInvoice,
+                purchaseInvoice.Id,
+                purchaseInvoice.Document.Date,
+                BuildDirectReceiptPostingLines(purchaseInvoice),
+                cancellationToken),
+            PurchaseInvoiceReferenceType.GoodsReceipt => await ApplyGoodsReceiptRevaluationAsync(
+                dbContext,
+                inventorySettings,
+                purchaseInvoice,
+                cancellationToken),
+            PurchaseInvoiceReferenceType.PurchaseOrder => "Submitted purchase invoices against purchase orders require a submitted goods receipt note. Use the GoodsReceipt source type instead.",
+            _ => "Unsupported purchase invoice source type."
+        };
+    }
+
+    private static async Task<string?> ApplyGoodsReceiptRevaluationAsync(
+        AppDbContext dbContext,
+        EffectiveInventorySettings inventorySettings,
+        PurchaseInvoice purchaseInvoice,
+        CancellationToken cancellationToken)
+    {
+        if (purchaseInvoice.SourceRef.ReferenceId is null || purchaseInvoice.SourceRef.ReferenceId == Guid.Empty)
+        {
+            return "Purchase invoice against goods receipt must reference a goods receipt note.";
+        }
+
+        var goodsReceiptNote = await dbContext.GoodsReceiptNotes
+            .Include(current => current.Items)
+            .FirstOrDefaultAsync(current => current.Id == purchaseInvoice.SourceRef.ReferenceId.Value, cancellationToken);
+        if (goodsReceiptNote is null)
+        {
+            return "Selected goods receipt reference does not exist.";
+        }
+
+        if (goodsReceiptNote.Status != GoodsReceiptStatuses.Submitted)
+        {
+            return "Purchase invoice can only be submitted against a submitted goods receipt note.";
+        }
+
+        if (goodsReceiptNote.VendorInformation.VendorId != purchaseInvoice.VendorInformation.VendorId)
+        {
+            return "Referenced goods receipt note does not belong to the selected vendor.";
+        }
+
+        if (await dbContext.PurchaseInvoices.AnyAsync(
+                current =>
+                    current.Id != purchaseInvoice.Id &&
+                    current.SourceRef.Type == PurchaseInvoiceReferenceType.GoodsReceipt &&
+                    current.SourceRef.ReferenceId == goodsReceiptNote.Id &&
+                    current.Status == PurchaseInvoiceStatus.Submitted,
+                cancellationToken))
+        {
+            return "Referenced goods receipt note is already linked to another submitted purchase invoice.";
+        }
+
+        var matchResult = BuildGoodsReceiptRevaluationLines(purchaseInvoice, goodsReceiptNote);
+        if (matchResult.Error is not null)
+        {
+            return matchResult.Error;
+        }
+
+        return await InventoryPostingService.ApplyRevaluationsAsync(
+            dbContext,
+            inventorySettings,
+            StockSourceTypes.PurchaseInvoice,
+            purchaseInvoice.Id,
+            purchaseInvoice.Document.Date,
+            matchResult.Lines,
+            cancellationToken);
+    }
+
+    private static List<InventoryReceiptPostingLine> BuildDirectReceiptPostingLines(PurchaseInvoice purchaseInvoice) =>
+        purchaseInvoice.Items
+            .OrderBy(item => item.Sno)
+            .ThenBy(item => item.Id)
+            .Select(item => new InventoryReceiptPostingLine(
+                item.Id,
+                item.ProductId,
+                item.WarehouseId ?? Guid.Empty,
+                item.Quantity + item.Foc,
+                item.TaxableAmount,
+                item.ProductNameSnapshot))
+            .ToList();
+
+    private static GoodsReceiptRevaluationBuildResult BuildGoodsReceiptRevaluationLines(
+        PurchaseInvoice purchaseInvoice,
+        GoodsReceiptNote goodsReceiptNote)
+    {
+        var purchaseLines = purchaseInvoice.Items
+            .OrderBy(item => item.Sno)
+            .ThenBy(item => item.Id)
+            .ToList();
+        var receiptLines = goodsReceiptNote.Items
+            .OrderBy(item => item.SerialNo)
+            .ThenBy(item => item.Id)
+            .ToList();
+
+        if (purchaseLines.Count != receiptLines.Count)
+        {
+            return GoodsReceiptRevaluationBuildResult.Invalid("Purchase invoice line count must match the referenced goods receipt note.");
+        }
+
+        var lines = new List<InventoryRevaluationPostingLine>(purchaseLines.Count);
+        for (var index = 0; index < purchaseLines.Count; index++)
+        {
+            var purchaseLine = purchaseLines[index];
+            var receiptLine = receiptLines[index];
+
+            var purchaseQuantity = RoundQuantity(purchaseLine.Quantity + purchaseLine.Foc);
+            var receiptQuantity = RoundQuantity(receiptLine.Quantity + receiptLine.FocQuantity);
+            if (purchaseLine.ProductId != receiptLine.ProductId ||
+                purchaseLine.WarehouseId != receiptLine.WarehouseId ||
+                purchaseQuantity != receiptQuantity)
+            {
+                return GoodsReceiptRevaluationBuildResult.Invalid("Purchase invoice items must match the referenced goods receipt note by line, warehouse, and received quantity.");
+            }
+
+            if (purchaseLine.WarehouseId is null)
+            {
+                return GoodsReceiptRevaluationBuildResult.Invalid("Warehouse is required for submitted purchase invoice items against goods receipt.");
+            }
+
+            var newUnitRate = purchaseQuantity > 0
+                ? RoundRate(purchaseLine.TaxableAmount / purchaseQuantity)
+                : 0;
+
+            lines.Add(new InventoryRevaluationPostingLine(
+                purchaseLine.Id,
+                purchaseLine.ProductId,
+                purchaseLine.WarehouseId.Value,
+                StockSourceTypes.GoodsReceiptNote,
+                goodsReceiptNote.Id,
+                receiptLine.Id,
+                newUnitRate,
+                purchaseLine.ProductNameSnapshot));
+        }
+
+        return GoodsReceiptRevaluationBuildResult.Valid(lines);
+    }
+
+    private static string? ValidateStatusTransition(PurchaseInvoiceStatus currentStatus, PurchaseInvoiceStatus nextStatus)
+    {
+        if (currentStatus == PurchaseInvoiceStatus.Cancelled)
+        {
+            return "Cancelled purchase invoices cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (PurchaseInvoiceStatus.Draft, PurchaseInvoiceStatus.Submitted) => null,
+            (PurchaseInvoiceStatus.Draft, PurchaseInvoiceStatus.Cancelled) => null,
+            (PurchaseInvoiceStatus.Submitted, PurchaseInvoiceStatus.Cancelled) => null,
+            _ => "Only draft purchase invoices can be submitted, and only submitted purchase invoices can be cancelled."
+        };
+    }
+
+    private static decimal RoundQuantity(decimal value) =>
+        Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
+    private static decimal RoundRate(decimal value) =>
+        Math.Round(value, 4, MidpointRounding.AwayFromZero);
 
     private static string ToStatusLabel(PurchaseInvoiceStatus value) => value switch
     {
@@ -619,6 +833,17 @@ public static class PurchaseInvoiceEndpoints
             new(null, sourceRef, document, vendorInformation, financialDetails, productInformation, general, footer, items, additions);
 
         public static PurchaseInvoiceBuildResult Invalid(string error) =>
+            new(error);
+    }
+
+    private sealed record GoodsReceiptRevaluationBuildResult(string? Error, List<InventoryRevaluationPostingLine>? Lines = null)
+    {
+        public List<InventoryRevaluationPostingLine> Lines { get; init; } = Lines ?? [];
+
+        public static GoodsReceiptRevaluationBuildResult Valid(List<InventoryRevaluationPostingLine> lines) =>
+            new(null, lines);
+
+        public static GoodsReceiptRevaluationBuildResult Invalid(string error) =>
             new(error);
     }
 }

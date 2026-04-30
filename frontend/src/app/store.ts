@@ -12,6 +12,7 @@ import { ledgerGroupApi } from "./api/ledgerGroupApi";
 import { lookupApi } from "./api/lookupApi";
 import { purchaseCreditNoteApi } from "./api/purchaseCreditNoteApi";
 import { purchaseDebitNoteApi } from "./api/purchaseDebitNoteApi";
+import { purchaseInvoiceAiApi } from "./api/purchaseInvoiceAiApi";
 import { purchaseInvoiceApi } from "./api/purchaseInvoiceApi";
 import { purchaseOrderApi } from "./api/purchaseOrderApi";
 import { productApi } from "./api/productApi";
@@ -40,6 +41,7 @@ export const store = configureStore({
     [lookupApi.reducerPath]: lookupApi.reducer,
     [purchaseCreditNoteApi.reducerPath]: purchaseCreditNoteApi.reducer,
     [purchaseDebitNoteApi.reducerPath]: purchaseDebitNoteApi.reducer,
+    [purchaseInvoiceAiApi.reducerPath]: purchaseInvoiceAiApi.reducer,
     [purchaseInvoiceApi.reducerPath]: purchaseInvoiceApi.reducer,
     [purchaseOrderApi.reducerPath]: purchaseOrderApi.reducer,
     [productApi.reducerPath]: productApi.reducer,
@@ -68,6 +70,7 @@ export const store = configureStore({
       lookupApi.middleware,
       purchaseCreditNoteApi.middleware,
       purchaseDebitNoteApi.middleware,
+      purchaseInvoiceAiApi.middleware,
       purchaseInvoiceApi.middleware,
       purchaseOrderApi.middleware,
       productApi.middleware,

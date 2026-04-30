@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { buildQueryParams } from "./queryUtils";
 
 export type WarehouseStatus = "Active" | "Inactive";
 
@@ -31,6 +32,11 @@ export interface WarehousePayload {
   status: WarehouseStatus;
 }
 
+export interface WarehouseListQueryParams {
+  keyword?: string;
+  limit?: number;
+}
+
 export const warehouseApi = createApi({
   reducerPath: "warehouseApi",
   baseQuery: fetchBaseQuery({
@@ -39,8 +45,11 @@ export const warehouseApi = createApi({
   }),
   tagTypes: ["Warehouse"],
   endpoints: (builder) => ({
-    getWarehouses: builder.query<Warehouse[], void>({
-      query: () => "/",
+    getWarehouses: builder.query<Warehouse[], WarehouseListQueryParams | void>({
+      query: (params) => ({
+        url: "/",
+        params: buildQueryParams(params ?? undefined),
+      }),
       transformResponse: (response: ApiResponse<Warehouse[]>) => response.data,
       providesTags: ["Warehouse"],
     }),
@@ -63,6 +72,7 @@ export const warehouseApi = createApi({
 
 export const {
   useGetWarehousesQuery,
+  useLazyGetWarehousesQuery,
   useCreateWarehouseMutation,
   useUpdateWarehouseMutation,
   useDeleteWarehouseMutation,

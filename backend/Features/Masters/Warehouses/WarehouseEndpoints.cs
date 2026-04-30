@@ -18,12 +18,31 @@ public static class WarehouseEndpoints
         return app;
     }
 
-    private static async Task<IResult> GetAllAsync(AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> GetAllAsync(
+        string? keyword,
+        int? limit,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var warehouses = await dbContext.Warehouses
+        var query = dbContext.Warehouses.AsNoTracking();
+        var normalizedKeyword = keyword?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedKeyword))
+        {
+            var pattern = $"%{normalizedKeyword}%";
+            query = query.Where(current =>
+                EF.Functions.ILike(current.Name, pattern) ||
+                EF.Functions.ILike(current.Code, pattern) ||
+                (current.ContactPerson != null && EF.Functions.ILike(current.ContactPerson, pattern)));
+        }
+
+        var normalizedLimit = limit is > 0 ? Math.Min(limit.Value, 100) : 0;
+        var sortedQuery = query
             .OrderBy(current => current.Name)
-            .Select(current => WarehouseDto.FromEntity(current))
-            .ToListAsync(cancellationToken);
+            .Select(current => WarehouseDto.FromEntity(current));
+
+        var warehouses = normalizedLimit > 0
+            ? await sortedQuery.Take(normalizedLimit).ToListAsync(cancellationToken)
+            : await sortedQuery.ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new ApiResponse<IReadOnlyList<WarehouseDto>>(true, "Warehouse list fetched successfully.", warehouses));
     }

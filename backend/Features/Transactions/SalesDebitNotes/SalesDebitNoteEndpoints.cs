@@ -1,3 +1,4 @@
+using backend.Features.Inventory;
 using backend.Features.Masters.Currencies;
 using backend.Features.Masters.Customers;
 using backend.Features.Masters.Ledgers;
@@ -20,8 +21,7 @@ public static class SalesDebitNoteEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateStatusAsync);
 
         return app;
     }
@@ -112,67 +112,55 @@ public static class SalesDebitNoteEndpoints
         return TypedResults.Created($"/api/transactions/sales-debit-notes/{salesDebitNote.Id}", new ApiResponse<SalesDebitNoteDto>(true, "Sales debit note created successfully.", SalesDebitNoteDto.FromEntity(created)));
     }
 
-    private static async Task<IResult> UpdateAsync(Guid id, UpdateSalesDebitNoteRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateStatusAsync(
+        Guid id,
+        UpdateSalesDebitNoteStatusRequest request,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var buildResult = BuildSalesDebitNoteRequest(request.NoteNature, request.SourceRef, request.Document, request.CustomerInformation, request.FinancialDetails, request.General, request.Items, request.Additions, request.Footer);
-        if (buildResult.Error is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
-        }
-
         var salesDebitNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (salesDebitNote is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Sales debit note not found.", null));
         }
 
-        if (await dbContext.SalesDebitNotes.AnyAsync(current => current.Id != id && current.Document.No == buildResult.Document.No, cancellationToken))
+        var nextStatus = string.IsNullOrWhiteSpace(request.Status)
+            ? salesDebitNote.Status
+            : ParseStatus(request.Status);
+        if (salesDebitNote.Status == nextStatus)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Sales debit note number already exists.", null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<SalesDebitNoteDto>(
+                true,
+                "Sales debit note updated successfully.",
+                SalesDebitNoteDto.FromEntity(unchanged)));
         }
 
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, id, cancellationToken);
-        if (resolutionError is not null)
+        var transitionError = ValidateStatusTransition(salesDebitNote.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        salesDebitNote.NoteNature = buildResult.NoteNature;
-        salesDebitNote.SourceRef = buildResult.SourceRef;
-        salesDebitNote.Document = buildResult.Document;
-        salesDebitNote.CustomerInformation = buildResult.CustomerInformation;
-        salesDebitNote.FinancialDetails = buildResult.FinancialDetails;
-        salesDebitNote.General = buildResult.General;
-        salesDebitNote.Footer = buildResult.Footer;
-        salesDebitNote.Status = string.IsNullOrWhiteSpace(request.Status) ? salesDebitNote.Status : ParseStatus(request.Status);
+        if (nextStatus == SalesDebitNoteStatus.Cancelled && salesDebitNote.AffectsInventory)
+        {
+            await AdjustmentInventoryPosting.RevertAsync(
+                dbContext,
+                StockSourceTypes.SalesDebitNote,
+                id,
+                cancellationToken);
+        }
+
+        salesDebitNote.Status = nextStatus;
         salesDebitNote.UpdatedAtUtc = DateTime.UtcNow;
-
-        dbContext.RemoveRange(salesDebitNote.Items);
-        salesDebitNote.Items = buildResult.Items;
-        dbContext.RemoveRange(salesDebitNote.Additions);
-        salesDebitNote.Additions = buildResult.Additions;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
-        return TypedResults.Ok(new ApiResponse<SalesDebitNoteDto>(true, "Sales debit note updated successfully.", SalesDebitNoteDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var salesDebitNote = await dbContext.SalesDebitNotes
-            .Include(current => current.Items)
-            .Include(current => current.Additions)
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (salesDebitNote is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Sales debit note not found.", null));
-        }
-
-        dbContext.SalesDebitNotes.Remove(salesDebitNote);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Sales debit note deleted successfully.", null));
+        return TypedResults.Ok(new ApiResponse<SalesDebitNoteDto>(
+            true,
+            "Sales debit note updated successfully.",
+            SalesDebitNoteDto.FromEntity(updated)));
     }
 
     private static SalesDebitNoteBuildResult BuildSalesDebitNoteRequest(
@@ -582,6 +570,24 @@ public static class SalesDebitNoteEndpoints
             "Submitted" => SalesDebitNoteStatus.Submitted,
             "Cancelled" => SalesDebitNoteStatus.Cancelled,
             _ => SalesDebitNoteStatus.Draft
+        };
+    }
+
+    private static string? ValidateStatusTransition(
+        SalesDebitNoteStatus currentStatus,
+        SalesDebitNoteStatus nextStatus)
+    {
+        if (currentStatus == SalesDebitNoteStatus.Cancelled)
+        {
+            return "Cancelled sales debit notes cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (SalesDebitNoteStatus.Draft, SalesDebitNoteStatus.Submitted) => null,
+            (SalesDebitNoteStatus.Draft, SalesDebitNoteStatus.Cancelled) => null,
+            (SalesDebitNoteStatus.Submitted, SalesDebitNoteStatus.Cancelled) => null,
+            _ => "Only draft sales debit notes can be submitted, and only draft or submitted sales debit notes can be cancelled."
         };
     }
 

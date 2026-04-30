@@ -19,13 +19,29 @@ public static class UomEndpoints
     }
 
     private static async Task<IResult> GetAllAsync(
+        string? keyword,
+        int? limit,
         AppDbContext dbContext,
         CancellationToken cancellationToken)
     {
-        var uoms = await dbContext.Uoms
+        var query = dbContext.Uoms.AsNoTracking();
+        var normalizedKeyword = keyword?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedKeyword))
+        {
+            var pattern = $"%{normalizedKeyword}%";
+            query = query.Where(uom =>
+                EF.Functions.ILike(uom.Name, pattern) ||
+                EF.Functions.ILike(uom.Code, pattern));
+        }
+
+        var normalizedLimit = limit is > 0 ? Math.Min(limit.Value, 100) : 0;
+        var sortedQuery = query
             .OrderBy(uom => uom.Name)
-            .Select(uom => UomDto.FromEntity(uom))
-            .ToListAsync(cancellationToken);
+            .Select(uom => UomDto.FromEntity(uom));
+
+        var uoms = normalizedLimit > 0
+            ? await sortedQuery.Take(normalizedLimit).ToListAsync(cancellationToken)
+            : await sortedQuery.ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new ApiResponse<IReadOnlyList<UomDto>>(
             true,

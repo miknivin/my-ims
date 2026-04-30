@@ -32,8 +32,8 @@ function VendorFormBody({ vendor, onClose }: VendorFormProps) {
   const isLoading = isCreating || isUpdating;
   const isEdit = Boolean(vendor);
 
-  const currentLedgerId = useMemo(
-    () => createVendorFormState(vendor).basicInfo.ledgerId,
+  const currentLedgerGroupId = useMemo(
+    () => createVendorFormState(vendor).basicInfo.ledgerGroupId,
     [vendor],
   );
 
@@ -44,11 +44,12 @@ function VendorFormBody({ vendor, onClose }: VendorFormProps) {
     if (
       !state.basicInfo.code.trim() ||
       !state.basicInfo.name.trim() ||
+      !state.basicInfo.ledgerGroupId.trim() ||
       !state.addressAndContact.address.trim() ||
       !state.addressAndContact.phone.trim() ||
       !state.addressAndContact.email.trim()
     ) {
-      setFormError("Code, name, address, phone, and email are required.");
+      setFormError("Code, name, ledger group, address, phone, and email are required.");
       return;
     }
 
@@ -85,11 +86,11 @@ function VendorFormBody({ vendor, onClose }: VendorFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900"
+      className="space-y-6 rounded-xl bg-white p-3 shadow-sm dark:bg-gray-900"
     >
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
         <div className="space-y-8">
-          <BasicInfoSection currentLedgerId={currentLedgerId} />
+          <BasicInfoSection currentLedgerGroupId={currentLedgerGroupId} />
           <AddressAndContactSection />
           <OpeningBalanceSection />
         </div>

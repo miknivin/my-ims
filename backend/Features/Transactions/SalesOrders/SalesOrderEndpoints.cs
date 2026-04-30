@@ -23,8 +23,7 @@ public static class SalesOrderEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateStatusAsync);
 
         return app;
     }
@@ -43,10 +42,26 @@ public static class SalesOrderEndpoints
                 .ThenInclude(item => item.Ledger);
     }
 
-    private static async Task<IResult> GetAllAsync(AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> GetAllAsync(
+        string? keyword,
+        int? limit,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var salesOrders = await dbContext.SalesOrders
-            .AsNoTracking()
+        var query = dbContext.SalesOrders.AsNoTracking();
+        var normalizedKeyword = keyword?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedKeyword))
+        {
+            var pattern = $"%{normalizedKeyword}%";
+            query = query.Where(current =>
+                EF.Functions.ILike(current.OrderDetails.No, pattern) ||
+                EF.Functions.ILike(current.PartyInformation.CustomerNameSnapshot, pattern) ||
+                (current.PartyInformation.CustomerCodeSnapshot != null &&
+                    EF.Functions.ILike(current.PartyInformation.CustomerCodeSnapshot, pattern)));
+        }
+
+        var normalizedLimit = limit is > 0 ? Math.Min(limit.Value, 100) : 0;
+        var sortedQuery = query
             .OrderByDescending(current => current.UpdatedAtUtc)
             .Select(current => new SalesOrderListItemDto(
                 current.Id,
@@ -56,8 +71,11 @@ public static class SalesOrderEndpoints
                 current.Footer.NetTotal,
                 current.Status,
                 current.CreatedAtUtc,
-                current.UpdatedAtUtc))
-            .ToListAsync(cancellationToken);
+                current.UpdatedAtUtc));
+
+        var salesOrders = normalizedLimit > 0
+            ? await sortedQuery.Take(normalizedLimit).ToListAsync(cancellationToken)
+            : await sortedQuery.ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new ApiResponse<IReadOnlyList<SalesOrderListItemDto>>(true, "Sales order list fetched successfully.", salesOrders));
     }
@@ -126,25 +144,16 @@ public static class SalesOrderEndpoints
         return TypedResults.Created($"/api/transactions/sales-orders/{salesOrder.Id}", new ApiResponse<SalesOrderDto>(true, "Sales order created successfully.", SalesOrderDto.FromEntity(created)));
     }
 
-    private static async Task<IResult> UpdateAsync(Guid id, UpdateSalesOrderRequest request, ClaimsPrincipal principal, AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateStatusAsync(
+        Guid id,
+        UpdateSalesOrderStatusRequest request,
+        ClaimsPrincipal principal,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
         if (!TryGetAuthenticatedUserId(principal, out var userId))
         {
             return TypedResults.Unauthorized();
-        }
-
-        var buildResult = BuildSalesOrderRequest(
-            request.OrderDetails,
-            request.PartyInformation,
-            request.CommercialDetails,
-            request.SalesDetails,
-            request.Items,
-            request.Additions,
-            request.Footer);
-
-        if (buildResult.Error is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
         }
 
         var salesOrder = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
@@ -153,54 +162,26 @@ public static class SalesOrderEndpoints
             return TypedResults.NotFound(new ApiResponse<object>(false, "Sales order not found.", null));
         }
 
-        if (await dbContext.SalesOrders.AnyAsync(current => current.Id != id && current.OrderDetails.No == buildResult.OrderDetails.No, cancellationToken))
+        var nextStatus = string.IsNullOrWhiteSpace(request.Status)
+            ? salesOrder.Status
+            : NormalizeStatus(request.Status);
+        if (salesOrder.Status == nextStatus)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Sales order number already exists.", null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<SalesOrderDto>(
+                true,
+                "Sales order updated successfully.",
+                SalesOrderDto.FromEntity(unchanged)));
         }
 
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, userId, cancellationToken);
-        if (resolutionError is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
-        }
-
-        salesOrder.OrderDetails = buildResult.OrderDetails;
-        salesOrder.PartyInformation = buildResult.PartyInformation;
-        salesOrder.CommercialDetails = buildResult.CommercialDetails;
-        salesOrder.SalesDetails = buildResult.SalesDetails;
-        salesOrder.Footer = buildResult.Footer;
-        salesOrder.Status = NormalizeStatus(request.Status);
+        salesOrder.Status = nextStatus;
         salesOrder.UpdatedById = userId;
         salesOrder.UpdatedAtUtc = DateTime.UtcNow;
-
-        dbContext.RemoveRange(salesOrder.Items);
-        salesOrder.Items = buildResult.Items;
-
-        dbContext.RemoveRange(salesOrder.Additions);
-        salesOrder.Additions = buildResult.Additions;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
         return TypedResults.Ok(new ApiResponse<SalesOrderDto>(true, "Sales order updated successfully.", SalesOrderDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var salesOrder = await dbContext.SalesOrders
-            .Include(current => current.Items)
-            .Include(current => current.Additions)
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-
-        if (salesOrder is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Sales order not found.", null));
-        }
-
-        dbContext.SalesOrders.Remove(salesOrder);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Sales order deleted successfully.", null));
     }
 
     private static SalesOrderBuildResult BuildSalesOrderRequest(

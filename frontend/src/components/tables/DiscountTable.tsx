@@ -3,6 +3,7 @@ import {
   useDeleteDiscountMutation,
   useGetDiscountsQuery,
 } from "../../app/api/discountApi";
+import MasterTableActions from "./shared/MasterTableActions";
 import {
   Table,
   TableBody,
@@ -104,21 +105,11 @@ export default function DiscountTable({ onEdit }: DiscountTableProps) {
                     </span>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => onEdit(discount)}
-                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => void handleDelete(discount)}
-                        disabled={isDeleting}
-                        className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <MasterTableActions
+                      isDeleting={isDeleting}
+                      onEdit={() => onEdit(discount)}
+                      onDelete={() => void handleDelete(discount)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

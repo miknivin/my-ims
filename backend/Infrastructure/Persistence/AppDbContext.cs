@@ -115,6 +115,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<FifoLayer> FifoLayers => Set<FifoLayer>();
 
+    public DbSet<InventoryLayerConsumption> InventoryLayerConsumptions => Set<InventoryLayerConsumption>();
+
+    public DbSet<InventoryLayerRevaluation> InventoryLayerRevaluations => Set<InventoryLayerRevaluation>();
+
     public DbSet<GoodsReceiptNote> GoodsReceiptNotes => Set<GoodsReceiptNote>();
 
     public DbSet<GoodsReceiptNoteItem> GoodsReceiptNoteItems => Set<GoodsReceiptNoteItem>();

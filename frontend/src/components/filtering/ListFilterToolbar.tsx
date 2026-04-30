@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import AutocompleteSelect from "../form/AutocompleteSelect";
 import { useLazySearchLookupQuery } from "../../app/api/lookupApi";
-import { LookupOption, LookupSource, SelectFilterOption, SortOption } from "../../types/filtering";
+import {
+  LookupOption,
+  LookupSource,
+  SelectFilterOption,
+  SortOption,
+} from "../../types/filtering";
 
 type SelectFilterConfig = {
   key: string;
@@ -96,7 +101,7 @@ export default function ListFilterToolbar({
       </div>
 
       {filters.length > 0 ? (
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 ">
           {filters.map((filter) => (
             <div key={filter.key}>
               <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -106,7 +111,9 @@ export default function ListFilterToolbar({
               {filter.type === "select" ? (
                 <select
                   value={filter.value}
-                  onChange={(event) => onFilterChange(filter.key, event.target.value)}
+                  onChange={(event) =>
+                    onFilterChange(filter.key, event.target.value)
+                  }
                   className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
                 >
                   <option value="">All</option>
@@ -119,7 +126,9 @@ export default function ListFilterToolbar({
               ) : (
                 <AutocompleteSelect<LookupOption, LookupOption[]>
                   value={filter.displayValue}
-                  placeholder={filter.placeholder ?? `Search ${filter.label.toLowerCase()}`}
+                  placeholder={
+                    filter.placeholder ?? `Search ${filter.label.toLowerCase()}`
+                  }
                   search={(keyword) =>
                     searchLookup({
                       source: filter.source,
@@ -130,7 +139,9 @@ export default function ListFilterToolbar({
                   getItems={(result) => result}
                   getOptionKey={(item) => item.id}
                   getOptionLabel={(item) =>
-                    item.secondaryLabel ? `${item.label} (${item.secondaryLabel})` : item.label
+                    item.secondaryLabel
+                      ? `${item.label} (${item.secondaryLabel})`
+                      : item.label
                   }
                   onSelect={(item) => onLookupChange(filter.key, item)}
                 />

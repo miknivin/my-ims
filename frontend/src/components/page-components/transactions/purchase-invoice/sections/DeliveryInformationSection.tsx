@@ -1,5 +1,5 @@
 import {
-  useGetPurchaseOrdersQuery,
+  useLazyGetPurchaseOrdersQuery,
   useLazyGetPurchaseOrderByIdQuery,
 } from "../../../../../app/api/purchaseOrderApi";
 import AutocompleteSelect from "../../../../form/AutocompleteSelect";
@@ -15,7 +15,7 @@ const radioClass =
 export default function DeliveryInformationSection() {
   const { state, setSourceRef, hydrateFromPurchaseOrder } =
     usePurchaseInvoiceForm();
-  const { data: purchaseOrders = [] } = useGetPurchaseOrdersQuery();
+  const [searchPurchaseOrders] = useLazyGetPurchaseOrdersQuery();
   const [getPurchaseOrderById] = useLazyGetPurchaseOrderByIdQuery();
 
   return (
@@ -57,17 +57,9 @@ export default function DeliveryInformationSection() {
               value={state.sourceRef.no}
               className="bg-transparent"
               placeholder="Search purchase order"
-              search={async (keyword) => {
-                const normalizedKeyword = keyword.trim().toLowerCase();
-
-                return purchaseOrders
-                  .filter((purchaseOrder) =>
-                    [purchaseOrder.no, purchaseOrder.vendorName].some((value) =>
-                      value.toLowerCase().includes(normalizedKeyword),
-                    ),
-                  )
-                  .slice(0, 10);
-              }}
+              search={(keyword) =>
+                searchPurchaseOrders({ keyword, limit: 10 }).unwrap()
+              }
               getItems={(result) => result}
               getOptionKey={(item) => item.id}
               getOptionLabel={(item) => item.no}

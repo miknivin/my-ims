@@ -6,4 +6,4 @@ public sealed record BillWisePaymentAccountInformationRequest(Guid LedgerId, str
 public sealed record BillWisePaymentPaymentDetailsRequest(string? ReferenceNo, string? InstrumentNo, DateOnly? InstrumentDate, string? Notes, decimal Advance);
 public sealed record BillWisePaymentAllocationRequest(int Sno, Guid PurchaseInvoiceId, decimal PaidAmount, decimal DiscountAmount);
 public sealed record CreateBillWisePaymentRequest(BillWisePaymentDocumentRequest Document, BillWisePaymentVendorInformationRequest VendorInformation, BillWisePaymentAccountInformationRequest AccountInformation, BillWisePaymentPaymentDetailsRequest PaymentDetails, IReadOnlyList<BillWisePaymentAllocationRequest> Allocations, string? Status);
-public sealed record UpdateBillWisePaymentRequest(BillWisePaymentDocumentRequest Document, BillWisePaymentVendorInformationRequest VendorInformation, BillWisePaymentAccountInformationRequest AccountInformation, BillWisePaymentPaymentDetailsRequest PaymentDetails, IReadOnlyList<BillWisePaymentAllocationRequest> Allocations, string? Status);
+public sealed record UpdateBillWisePaymentStatusRequest(string? Status);

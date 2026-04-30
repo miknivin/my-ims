@@ -1,5 +1,5 @@
 import {
-  useGetSalesOrdersQuery,
+  useLazyGetSalesOrdersQuery,
   useLazyGetSalesOrderByIdQuery,
 } from "../../../../../app/api/salesOrderApi";
 import AutocompleteSelect from "../../../../form/AutocompleteSelect";
@@ -13,7 +13,7 @@ const labelClass = "mb-2 block text-sm font-medium text-gray-700 dark:text-gray-
 export default function OrderDetailsSection() {
   const { state, setDocument, setSourceRef, hydrateFromSalesOrder } =
     useSalesInvoiceForm();
-  const { data: salesOrders = [] } = useGetSalesOrdersQuery();
+  const [searchSalesOrders] = useLazyGetSalesOrdersQuery();
   const [getSalesOrderById] = useLazyGetSalesOrderByIdQuery();
   const { document, sourceRef } = state;
 
@@ -79,17 +79,9 @@ export default function OrderDetailsSection() {
               value={sourceRef.no}
               className="bg-transparent"
               placeholder="Search sales order"
-              search={async (keyword) => {
-                const normalizedKeyword = keyword.trim().toLowerCase();
-
-                return salesOrders
-                  .filter((salesOrder) =>
-                    [salesOrder.no, salesOrder.customerName].some((value) =>
-                      value.toLowerCase().includes(normalizedKeyword),
-                    ),
-                  )
-                  .slice(0, 10);
-              }}
+              search={(keyword) =>
+                searchSalesOrders({ keyword, limit: 10 }).unwrap()
+              }
               getItems={(result) => result}
               getOptionKey={(item) => item.id}
               getOptionLabel={(item) => `${item.no} · ${item.customerName}`}

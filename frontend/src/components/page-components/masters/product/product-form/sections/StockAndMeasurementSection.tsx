@@ -1,4 +1,10 @@
-import { useGetUomsQuery } from "../../../../../../app/api/uomApi";
+import { useMemo } from "react";
+import {
+  useLazySearchLookupQuery,
+  useResolveLookupsQuery,
+} from "../../../../../../app/api/lookupApi";
+import { LookupOption } from "../../../../../../types/filtering";
+import AutocompleteSelect from "../../../../../form/AutocompleteSelect";
 import Label from "../../../../../form/Label";
 import Input from "../../../../../form/input/InputField";
 import { useProductForm } from "../ProductFormContext";
@@ -6,15 +12,100 @@ import SectionCard from "../SectionCard";
 
 export default function StockAndMeasurementSection() {
   const { state, setSection } = useProductForm();
-  const { data: uoms = [] } = useGetUomsQuery();
+  const [searchLookup] = useLazySearchLookupQuery();
 
-  const renderUomSelect = (label: string, key: "baseUomId" | "purchaseUomId" | "salesUomId" | "stockUomId") => (
+  const uomFields = useMemo(
+    () =>
+      [
+        {
+          label: "Base UOM",
+          key: "baseUomId",
+          value: state.stockAndMeasurement.baseUomId,
+        },
+        {
+          label: "Purchase UOM",
+          key: "purchaseUomId",
+          value: state.stockAndMeasurement.purchaseUomId,
+        },
+        {
+          label: "Sales UOM",
+          key: "salesUomId",
+          value: state.stockAndMeasurement.salesUomId,
+        },
+        {
+          label: "Stock UOM",
+          key: "stockUomId",
+          value: state.stockAndMeasurement.stockUomId,
+        },
+      ] as const,
+    [
+      state.stockAndMeasurement.baseUomId,
+      state.stockAndMeasurement.purchaseUomId,
+      state.stockAndMeasurement.salesUomId,
+      state.stockAndMeasurement.stockUomId,
+    ],
+  );
+
+  const resolveItems = useMemo(
+    () =>
+      uomFields
+        .filter((field) => field.value)
+        .map((field) => ({
+          source: "uoms" as const,
+          ids: [field.value],
+        })),
+    [uomFields],
+  );
+
+  const { data: resolvedLookups = [] } = useResolveLookupsQuery(
+    { items: resolveItems },
+    { skip: resolveItems.length === 0 },
+  );
+
+  const resolvedLabelMap = useMemo(() => {
+    const labels: Record<string, string> = {};
+
+    uomFields.forEach((field, index) => {
+      if (!field.value) {
+        return;
+      }
+
+      labels[field.key] = resolvedLookups[index]?.options[0]?.label ?? "";
+    });
+
+    return labels;
+  }, [resolvedLookups, uomFields]);
+
+  const renderUomSelect = (
+    label: string,
+    key: "baseUomId" | "purchaseUomId" | "salesUomId" | "stockUomId",
+  ) => (
     <div className="mb-2">
       <Label>{label}</Label>
-      <select value={state.stockAndMeasurement[key]} onChange={(event) => setSection("stockAndMeasurement", { [key]: event.target.value })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
-        <option value="">Select UOM</option>
-        {uoms.map((uom) => <option key={uom.id} value={uom.id}>{uom.name}</option>)}
-      </select>
+      <AutocompleteSelect<LookupOption, LookupOption[]>
+        value={resolvedLabelMap[key] ?? ""}
+        placeholder="Search UOM"
+        search={(keyword) =>
+          searchLookup({
+            source: "uoms",
+            keyword,
+            limit: 10,
+          })
+        }
+        getItems={(result) => result}
+        getOptionKey={(item) => item.id}
+        getOptionLabel={(item) =>
+          item.secondaryLabel ? `${item.label} (${item.secondaryLabel})` : item.label
+        }
+        onInputChange={(value) => {
+          if (!value.trim()) {
+            setSection("stockAndMeasurement", { [key]: "" });
+          }
+        }}
+        onSelect={(item) =>
+          setSection("stockAndMeasurement", { [key]: item?.id ?? "" })
+        }
+      />
     </div>
   );
 

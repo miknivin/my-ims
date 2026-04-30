@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { buildQueryParams } from "./queryUtils";
 
 export type UomStatus = "Active" | "Inactive";
 
@@ -23,6 +24,11 @@ interface UomPayload {
   status: UomStatus;
 }
 
+export interface UomListQueryParams {
+  keyword?: string;
+  limit?: number;
+}
+
 export const uomApi = createApi({
   reducerPath: "uomApi",
   baseQuery: fetchBaseQuery({
@@ -31,8 +37,11 @@ export const uomApi = createApi({
   }),
   tagTypes: ["Uom"],
   endpoints: (builder) => ({
-    getUoms: builder.query<Uom[], void>({
-      query: () => "/",
+    getUoms: builder.query<Uom[], UomListQueryParams | void>({
+      query: (params) => ({
+        url: "/",
+        params: buildQueryParams(params ?? undefined),
+      }),
       transformResponse: (response: ApiResponse<Uom[]>) => response.data,
       providesTags: ["Uom"],
     }),
@@ -66,6 +75,7 @@ export const uomApi = createApi({
 
 export const {
   useGetUomsQuery,
+  useLazyGetUomsQuery,
   useCreateUomMutation,
   useUpdateUomMutation,
   useDeleteUomMutation,

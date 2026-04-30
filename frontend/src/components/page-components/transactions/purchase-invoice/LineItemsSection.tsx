@@ -1,5 +1,3 @@
-import { useGetUomsQuery } from "../../../../app/api/uomApi";
-import { useGetWarehousesQuery } from "../../../../app/api/warehouseApi";
 import TransactionLineItemsSection from "../shared/TransactionLineItemsSection";
 import { usePurchaseInvoiceForm } from "./PurchaseInvoiceFormContext";
 import {
@@ -11,8 +9,6 @@ import { usePurchaseInvoiceLineColumns } from "./hooks/usePurchaseInvoiceLineCol
 
 export default function LineItemsSection() {
   const { state, addLine, updateLine, removeLine } = usePurchaseInvoiceForm();
-  const { data: uoms = [] } = useGetUomsQuery();
-  const { data: warehouses = [] } = useGetWarehousesQuery();
   const lineColumns = usePurchaseInvoiceLineColumns();
 
   return (
@@ -20,8 +16,6 @@ export default function LineItemsSection() {
       (typeof state.items)[number],
       {
         line: (typeof state.items)[number];
-        uoms: typeof uoms;
-        warehouses: typeof warehouses;
         onChange: typeof updateLine;
       },
       PurchaseInvoiceLineColumnKey
@@ -33,8 +27,6 @@ export default function LineItemsSection() {
       getRowId={(line) => line.rowId}
       getCellContext={(line) => ({
         line,
-        uoms,
-        warehouses,
         onChange: updateLine,
       })}
       onAddLine={addLine}

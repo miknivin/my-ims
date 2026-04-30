@@ -14,12 +14,14 @@ public sealed class FifoLayerConfiguration : IEntityTypeConfiguration<FifoLayer>
         builder.Ignore(current => current.IsDepleted);
 
         builder.Property(current => current.SourceType).HasMaxLength(30);
+        builder.Property(current => current.SourceLineId).HasColumnName("source_line_id");
         builder.Property(current => current.OriginalQuantity).HasColumnType("numeric(18,2)");
         builder.Property(current => current.RemainingQuantity).HasColumnType("numeric(18,2)");
         builder.Property(current => current.Rate).HasColumnType("numeric(18,4)");
 
         builder.HasIndex(current => new { current.ItemId, current.WarehouseId, current.PostingDateUtc });
         builder.HasIndex(current => new { current.SourceType, current.SourceId });
+        builder.HasIndex(current => new { current.SourceType, current.SourceId, current.SourceLineId });
 
         builder.HasOne(current => current.Item)
             .WithMany()

@@ -161,6 +161,7 @@ public static class LedgerWiseReportEndpoints
         JournalVoucherType.PurchaseDebitNote => "PDN",
         JournalVoucherType.BillWiseReceipt => "BWR",
         JournalVoucherType.BillWisePayment => "BWP",
+        JournalVoucherType.GoodsReceiptNote => "GRN",
         _ => value.ToString()
     };
 

@@ -2,7 +2,8 @@ namespace backend.Features.Settings;
 
 public sealed record UpdateAppSettingsRequest(
     GeneralSettingsRequest General,
-    InventorySettingsRequest InventorySettings);
+    InventorySettingsRequest InventorySettings,
+    AccountingSettingsRequest AccountingSettings);
 
 public sealed record GeneralSettingsRequest(
     string BusinessName,
@@ -40,3 +41,17 @@ public sealed record InventoryBatchSerialSettingsRequest(
     bool EnableBatchTracking,
     bool EnableSerialTracking,
     bool RequireExpiryForBatchItems);
+
+public sealed record AccountingSettingsRequest(
+    Guid? DiscountAllowedLedgerId,
+    Guid? DiscountReceivedLedgerId,
+    Guid? InventoryLedgerId,
+    Guid? SalesLedgerId,
+    Guid? CostOfGoodsSoldLedgerId,
+    Guid? GrnClearingLedgerId,
+    Guid? PurchaseTaxLedgerId,
+    Guid? SalesTaxLedgerId,
+    Guid? DefaultCashLedgerId,
+    Guid? GrnAdditionLedgerId,
+    Guid? GrnDiscountLedgerId,
+    Guid? RoundOffLedgerId);

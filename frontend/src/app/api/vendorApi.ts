@@ -58,9 +58,11 @@ export interface Vendor {
   addressAndContact: VendorAddressAndContact;
   creditAndFinance: VendorCreditAndFinance;
   taxAndCompliance: VendorTaxAndCompliance;
-  ledgerId: string | null;
-  ledgerCode: string | null;
-  ledgerName: string | null;
+  ledgerId: string;
+  ledgerCode: string;
+  ledgerName: string;
+  ledgerGroupId: string;
+  ledgerGroupName: string | null;
   bankDetails: VendorBankDetails;
   other: VendorOtherInfo;
   status: VendorStatus;
@@ -74,7 +76,7 @@ export interface VendorPayload {
   addressAndContact: VendorAddressAndContact;
   creditAndFinance: Omit<VendorCreditAndFinance, "currencyCode">;
   taxAndCompliance: VendorTaxAndCompliance;
-  ledgerId: string | null;
+  ledgerGroupId: string;
   bankDetails: VendorBankDetails;
   other: VendorOtherInfo;
   status: VendorStatus;
@@ -88,9 +90,11 @@ export interface VendorListItem {
   phone: string;
   currencyId: string | null;
   currencyCode: string | null;
-  ledgerId: string | null;
+  ledgerId: string;
   ledgerCode: string | null;
   ledgerName: string | null;
+  ledgerGroupId: string;
+  ledgerGroupName: string | null;
   status: VendorStatus;
   openingBalance: VendorOpeningBalance | null;
   createdAtUtc: string;
@@ -104,6 +108,7 @@ export interface VendorListQueryParams {
   sortBy?: string;
   status?: VendorStatus;
   ledgerId?: string;
+  ledgerGroupId?: string;
   currencyId?: string;
 }
 

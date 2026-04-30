@@ -4,6 +4,7 @@ public sealed record AppSettingsDto(
     Guid Id,
     GeneralSettingsDto General,
     InventorySettingsDto InventorySettings,
+    AccountingSettingsDto AccountingSettings,
     DateTime CreatedAtUtc,
     DateTime UpdatedAtUtc)
 {
@@ -41,6 +42,31 @@ public sealed record AppSettingsDto(
                     settings.InventorySettings.BatchSerial.EnableBatchTracking,
                     settings.InventorySettings.BatchSerial.EnableSerialTracking,
                     settings.InventorySettings.BatchSerial.RequireExpiryForBatchItems)),
+            new AccountingSettingsDto(
+                settings.AccountingSettings.DiscountAllowedLedgerId,
+                settings.AccountingSettings.DiscountAllowedLedger?.Name,
+                settings.AccountingSettings.DiscountReceivedLedgerId,
+                settings.AccountingSettings.DiscountReceivedLedger?.Name,
+                settings.AccountingSettings.InventoryLedgerId,
+                settings.AccountingSettings.InventoryLedger?.Name,
+                settings.AccountingSettings.SalesLedgerId,
+                settings.AccountingSettings.SalesLedger?.Name,
+                settings.AccountingSettings.CostOfGoodsSoldLedgerId,
+                settings.AccountingSettings.CostOfGoodsSoldLedger?.Name,
+                settings.AccountingSettings.GrnClearingLedgerId,
+                settings.AccountingSettings.GrnClearingLedger?.Name,
+                settings.AccountingSettings.PurchaseTaxLedgerId,
+                settings.AccountingSettings.PurchaseTaxLedger?.Name,
+                settings.AccountingSettings.SalesTaxLedgerId,
+                settings.AccountingSettings.SalesTaxLedger?.Name,
+                settings.AccountingSettings.DefaultCashLedgerId,
+                settings.AccountingSettings.DefaultCashLedger?.Name,
+                settings.AccountingSettings.GrnAdditionLedgerId,
+                settings.AccountingSettings.GrnAdditionLedger?.Name,
+                settings.AccountingSettings.GrnDiscountLedgerId,
+                settings.AccountingSettings.GrnDiscountLedger?.Name,
+                settings.AccountingSettings.RoundOffLedgerId,
+                settings.AccountingSettings.RoundOffLedger?.Name),
             settings.CreatedAtUtc,
             settings.UpdatedAtUtc);
     }
@@ -89,5 +115,31 @@ public sealed record InventoryBatchSerialSettingsDto(
     bool EnableBatchTracking,
     bool EnableSerialTracking,
     bool RequireExpiryForBatchItems);
+
+public sealed record AccountingSettingsDto(
+    Guid? DiscountAllowedLedgerId,
+    string? DiscountAllowedLedgerName,
+    Guid? DiscountReceivedLedgerId,
+    string? DiscountReceivedLedgerName,
+    Guid? InventoryLedgerId,
+    string? InventoryLedgerName,
+    Guid? SalesLedgerId,
+    string? SalesLedgerName,
+    Guid? CostOfGoodsSoldLedgerId,
+    string? CostOfGoodsSoldLedgerName,
+    Guid? GrnClearingLedgerId,
+    string? GrnClearingLedgerName,
+    Guid? PurchaseTaxLedgerId,
+    string? PurchaseTaxLedgerName,
+    Guid? SalesTaxLedgerId,
+    string? SalesTaxLedgerName,
+    Guid? DefaultCashLedgerId,
+    string? DefaultCashLedgerName,
+    Guid? GrnAdditionLedgerId,
+    string? GrnAdditionLedgerName,
+    Guid? GrnDiscountLedgerId,
+    string? GrnDiscountLedgerName,
+    Guid? RoundOffLedgerId,
+    string? RoundOffLedgerName);
 
 public sealed record ApiResponse<T>(bool Success, string Message, T? Data);

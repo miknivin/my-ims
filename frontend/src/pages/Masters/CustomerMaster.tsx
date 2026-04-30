@@ -16,6 +16,8 @@ import ListFilterToolbar, {
 import PaginationControls from "../../components/filtering/PaginationControls";
 import CustomerHeader from "../../components/page-components/masters/customer/CustomerHeader";
 import CustomerTable from "../../components/tables/CustomerTable";
+import Button from "../../components/ui/button/Button";
+import { OffCanvas } from "../../components/ui/offcanvas";
 import { useResolvedLookupLabels } from "../../hooks/useResolvedLookupLabels";
 import { useUrlFilterState } from "../../hooks/useUrlFilterState";
 import { SortOption } from "../../types/filtering";
@@ -47,6 +49,7 @@ export default function CustomerMaster() {
   const navigate = useNavigate();
   const { values, update, clear, clearAll } = useUrlFilterState(defaults);
   const [referenceLabels, setReferenceLabels] = useState<Record<string, string>>({});
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const queryParams: CustomerListQueryParams = useMemo(
     () => ({
@@ -79,6 +82,16 @@ export default function CustomerMaster() {
 
       if (!values.defaultTaxId) {
         delete next.defaultTaxId;
+      }
+
+      const currentKeys = Object.keys(current);
+      const nextKeys = Object.keys(next);
+
+      if (
+        currentKeys.length === nextKeys.length &&
+        nextKeys.every((key) => current[key] === next[key])
+      ) {
+        return current;
       }
 
       return next;
@@ -152,31 +165,19 @@ export default function CustomerMaster() {
     values.ledgerId ? { key: "ledgerId", label: "Ledger", value: referenceLabels.ledgerId ?? values.ledgerId } : null,
     values.defaultTaxId ? { key: "defaultTaxId", label: "Default Tax", value: referenceLabels.defaultTaxId ?? values.defaultTaxId } : null,
   ].filter(Boolean) as Array<{ key: string; label: string; value: string }>;
+  const hasActiveFilters = chips.length > 0;
 
   return (
     <div className="w-full">
       <PageBreadcrumb pageTitle="Customer Master" />
-      <CustomerHeader onAdd={() => navigate("/masters/customers/new")} />
+      <CustomerHeader
+        onAdd={() => navigate("/masters/customers/new")}
+        onFilter={() => setIsFilterOpen(true)}
+        hasActiveFilters={hasActiveFilters}
+      />
       <div className="space-y-6">
         <ComponentCard title="Customer Catalogue">
           <div className="space-y-4">
-            <ListFilterToolbar
-              keyword={values.keyword}
-              sortBy={values.sortBy}
-              sortOptions={sortOptions}
-              filters={filters}
-              onKeywordChange={(value) => update({ keyword: value })}
-              onSortChange={(value) => update({ sortBy: value })}
-              onFilterChange={(key, value) => update({ [key]: value } as Partial<typeof defaults>)}
-              onLookupChange={(key, item) => {
-                setReferenceLabels((current) => ({
-                  ...current,
-                  [key]: item?.label ?? "",
-                }));
-                update({ [key]: item?.id ?? "" } as Partial<typeof defaults>);
-              }}
-            />
-
             <AppliedFilterChips
               chips={chips}
               onRemove={(key) => {
@@ -213,6 +214,47 @@ export default function CustomerMaster() {
           </div>
         </ComponentCard>
       </div>
+
+      <OffCanvas
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        title="Customer Filters"
+        description="Filter customers using search, sort order, pricing, and lookup criteria."
+      >
+        <div className="space-y-4">
+          <ListFilterToolbar
+            keyword={values.keyword}
+            sortBy={values.sortBy}
+            sortOptions={sortOptions}
+            filters={filters}
+            onKeywordChange={(value) => update({ keyword: value })}
+            onSortChange={(value) => update({ sortBy: value })}
+            onFilterChange={(key, value) => update({ [key]: value } as Partial<typeof defaults>)}
+            onLookupChange={(key, item) => {
+              setReferenceLabels((current) => ({
+                ...current,
+                [key]: item?.label ?? "",
+              }));
+              update({ [key]: item?.id ?? "" } as Partial<typeof defaults>);
+            }}
+          />
+          <div className="flex items-center justify-end gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                clearAll();
+                setReferenceLabels({});
+              }}
+            >
+              Clear
+            </Button>
+            <Button type="button" variant="primary" onClick={() => setIsFilterOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      </OffCanvas>
     </div>
   );
 }

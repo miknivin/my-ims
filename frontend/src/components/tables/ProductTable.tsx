@@ -1,4 +1,5 @@
 import { ProductListItem, useDeleteProductMutation } from "../../app/api/productApi";
+import MasterTableActions from "./shared/MasterTableActions";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
 
 export default function ProductTable({
@@ -52,10 +53,15 @@ export default function ProductTable({
                     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${product.status === "Active" ? "bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"}`}>{product.status}</span>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => onEdit(product)} className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800">Edit</button>
-                      <button onClick={() => window.confirm(`Delete product "${product.basicInfo.name}"?`) && void deleteProduct(product.id).unwrap()} disabled={isDeleting} className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/30">Delete</button>
-                    </div>
+                    <MasterTableActions
+                      isDeleting={isDeleting}
+                      onEdit={() => onEdit(product)}
+                      onDelete={() => {
+                        if (window.confirm(`Delete product "${product.basicInfo.name}"?`)) {
+                          void deleteProduct(product.id).unwrap();
+                        }
+                      }}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

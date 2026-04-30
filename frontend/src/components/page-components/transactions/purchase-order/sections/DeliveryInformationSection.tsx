@@ -1,4 +1,4 @@
-import { useGetWarehousesQuery } from "../../../../../app/api/warehouseApi";
+import { useLazyGetWarehousesQuery } from "../../../../../app/api/warehouseApi";
 import AutocompleteSelect from "../../../../form/AutocompleteSelect";
 import TransactionSectionCard from "../../shared/TransactionSectionCard";
 import { usePurchaseOrderForm } from "../PurchaseOrderFormContext";
@@ -10,7 +10,7 @@ const areaClass =
   "w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
 
 export default function DeliveryInformationSection() {
-  const { data: warehouses = [] } = useGetWarehousesQuery();
+  const [searchWarehouses] = useLazyGetWarehousesQuery();
   const { state, setDeliveryInformation } = usePurchaseOrderForm();
 
   return (
@@ -22,19 +22,7 @@ export default function DeliveryInformationSection() {
             value={state.deliveryInformation.warehouseName}
             className="bg-transparent"
             placeholder="Search warehouse"
-            search={async (keyword) => {
-              const normalizedKeyword = keyword.trim().toLowerCase();
-
-              return warehouses
-                .filter((warehouse) =>
-                  [
-                    warehouse.name,
-                    warehouse.code,
-                    warehouse.contactPerson ?? "",
-                  ].some((value) => value.toLowerCase().includes(normalizedKeyword)),
-                )
-                .slice(0, 10);
-            }}
+            search={(keyword) => searchWarehouses({ keyword, limit: 10 }).unwrap()}
             getItems={(result) => result}
             getOptionKey={(item) => item.id}
             getOptionLabel={(item) =>

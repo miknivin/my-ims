@@ -92,7 +92,7 @@ function CustomerFormBody({ customer, onClose }: CustomerFormProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-xl bg-white p-6 shadow-sm dark:bg-gray-900"
+      className="space-y-6 rounded-xl bg-white p-3 shadow-sm dark:bg-gray-900"
     >
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
         <div className="space-y-8">

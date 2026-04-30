@@ -1,4 +1,3 @@
-import { useGetWarehousesQuery } from "../../../../app/api/warehouseApi";
 import TransactionLineItemsSection from "../shared/TransactionLineItemsSection";
 import { useSalesOrderForm } from "./SalesOrderFormContext";
 import {
@@ -10,7 +9,6 @@ import { useSalesOrderLineColumns } from "./hooks/useSalesOrderLineColumns";
 
 export default function LineItemsSection() {
   const { state, addLine, updateLine, removeLine } = useSalesOrderForm();
-  const { data: warehouses = [] } = useGetWarehousesQuery();
   const lineColumns = useSalesOrderLineColumns(
     state.commercialDetails.rateLevel,
   );
@@ -20,7 +18,6 @@ export default function LineItemsSection() {
       (typeof state.items)[number],
       {
         line: (typeof state.items)[number];
-        warehouses: typeof warehouses;
         onChange: typeof updateLine;
       },
       SalesOrderLineColumnKey
@@ -32,7 +29,6 @@ export default function LineItemsSection() {
       getRowId={(line) => line.rowId}
       getCellContext={(line) => ({
         line,
-        warehouses,
         onChange: updateLine,
       })}
       onAddLine={addLine}

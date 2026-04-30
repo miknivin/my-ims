@@ -10,6 +10,8 @@ public sealed class VendorFilterRequest : PagedFilter
 
     public Guid? LedgerId { get; set; }
 
+    public Guid? LedgerGroupId { get; set; }
+
     public Guid? CurrencyId { get; set; }
 }
 
@@ -20,9 +22,11 @@ public sealed record VendorListItemDto(
     string Phone,
     Guid? CurrencyId,
     string? CurrencyCode,
-    Guid? LedgerId,
+    Guid LedgerId,
     string? LedgerCode,
     string? LedgerName,
+    Guid LedgerGroupId,
+    string? LedgerGroupName,
     string Status,
     VendorOpeningBalanceDto? OpeningBalance,
     DateTime CreatedAtUtc,
@@ -99,6 +103,11 @@ public class GetVendorsQueryHandler : FilteredQueryHandlerBase<Vendor, VendorLis
             query = query.Where(current => current.LedgerId == filter.LedgerId);
         }
 
+        if (filter.LedgerGroupId is not null)
+        {
+            query = query.Where(current => current.Ledger != null && current.Ledger.LedgerGroupId == filter.LedgerGroupId);
+        }
+
         if (filter.CurrencyId is not null)
         {
             query = query.Where(current => current.CreditAndFinance.CurrencyId == filter.CurrencyId);
@@ -122,9 +131,11 @@ public class GetVendorsQueryHandler : FilteredQueryHandlerBase<Vendor, VendorLis
             current.AddressAndContact.Phone,
             current.CreditAndFinance.CurrencyId,
             current.CreditAndFinance.Currency != null ? current.CreditAndFinance.Currency.Code : null,
-            current.LedgerId,
+            current.LedgerId ?? Guid.Empty,
             current.Ledger != null ? current.Ledger.Code : null,
             current.Ledger != null ? current.Ledger.Name : null,
+            current.Ledger != null ? current.Ledger.LedgerGroupId : Guid.Empty,
+            current.Ledger != null && current.Ledger.LedgerGroup != null ? current.Ledger.LedgerGroup.Name : null,
             current.Status,
             current.OpeningBalance == null
                 ? null

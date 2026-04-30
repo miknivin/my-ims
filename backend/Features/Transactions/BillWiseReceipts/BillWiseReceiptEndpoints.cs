@@ -16,8 +16,7 @@ public static class BillWiseReceiptEndpoints
         group.MapGet("/outstanding-invoices", GetOutstandingInvoicesAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateAsync);
 
         return app;
     }
@@ -143,6 +142,15 @@ public static class BillWiseReceiptEndpoints
         if (buildResult.Receipt.Status == BillWiseDocumentStatus.Submitted)
         {
             ApplySettlements(buildResult.Receipt.Allocations);
+
+            var journalError = await BillWiseReceiptJournalPosting.PostAsync(
+                dbContext,
+                buildResult.Receipt,
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
         }
 
         dbContext.Set<BillWiseReceipt>().Add(buildResult.Receipt);
@@ -156,7 +164,7 @@ public static class BillWiseReceiptEndpoints
 
     private static async Task<IResult> UpdateAsync(
         Guid id,
-        UpdateBillWiseReceiptRequest request,
+        UpdateBillWiseReceiptStatusRequest request,
         AppDbContext dbContext,
         CancellationToken cancellationToken)
     {
@@ -166,66 +174,52 @@ public static class BillWiseReceiptEndpoints
             return TypedResults.NotFound(new ApiResponse<object>(false, "Bill wise receipt not found.", null));
         }
 
-        var buildResult = BuildBillWiseReceiptRequest(
-            request.Document,
-            request.CustomerInformation,
-            request.AccountInformation,
-            request.ReceiptDetails,
-            request.Allocations,
-            request.Status,
-            receipt.Status);
-        if (buildResult.Error is not null)
+        var nextStatus = ParseStatus(request.Status, receipt.Status);
+        if (receipt.Status == nextStatus)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<BillWiseReceiptDto>(
+                true,
+                "Bill wise receipt updated successfully.",
+                BillWiseReceiptDto.FromEntity(unchanged)));
         }
 
-        if (await dbContext.Set<BillWiseReceipt>().AnyAsync(current => current.Id != id && current.No == buildResult.Receipt.No, cancellationToken))
+        var transitionError = ValidateStatusTransition(receipt.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Bill wise receipt number already exists.", null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        var previousSettlements = receipt.Status == BillWiseDocumentStatus.Submitted
-            ? receipt.Allocations
-                .GroupBy(current => current.SalesInvoiceId)
-                .ToDictionary(
-                    group => group.Key,
-                    group => Math.Round(group.Sum(item => item.PaidAmount + item.DiscountAmount), 2, MidpointRounding.AwayFromZero))
-            : new Dictionary<Guid, decimal>();
-
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult.Receipt, previousSettlements, cancellationToken);
-        if (resolutionError is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
-        }
-
-        if (receipt.Status == BillWiseDocumentStatus.Submitted)
-        {
-            ReverseSettlements(receipt.Allocations);
-        }
-
-        receipt.No = buildResult.Receipt.No;
-        receipt.Date = buildResult.Receipt.Date;
-        receipt.ReferenceNo = buildResult.Receipt.ReferenceNo;
-        receipt.InstrumentNo = buildResult.Receipt.InstrumentNo;
-        receipt.InstrumentDate = buildResult.Receipt.InstrumentDate;
-        receipt.Notes = buildResult.Receipt.Notes;
-        receipt.TotalAllocated = buildResult.Receipt.TotalAllocated;
-        receipt.TotalDiscount = buildResult.Receipt.TotalDiscount;
-        receipt.Advance = buildResult.Receipt.Advance;
-        receipt.Amount = buildResult.Receipt.Amount;
-        receipt.Status = buildResult.Receipt.Status;
-        receipt.UpdatedAtUtc = DateTime.UtcNow;
-        receipt.VoucherType = BillWiseVoucherType.Receipt;
-        receipt.CustomerInformation = buildResult.Receipt.CustomerInformation;
-        receipt.AccountInformation = buildResult.Receipt.AccountInformation;
-
-        dbContext.RemoveRange(receipt.Allocations);
-        receipt.Allocations = buildResult.Receipt.Allocations;
-
-        if (receipt.Status == BillWiseDocumentStatus.Submitted)
+        if (nextStatus == BillWiseDocumentStatus.Submitted)
         {
             ApplySettlements(receipt.Allocations);
+
+            var journalError = await BillWiseReceiptJournalPosting.PostAsync(
+                dbContext,
+                receipt,
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
         }
+        else if (receipt.Status == BillWiseDocumentStatus.Submitted && nextStatus == BillWiseDocumentStatus.Cancelled)
+        {
+            ReverseSettlements(receipt.Allocations);
+
+            var journalError = await BillWiseReceiptJournalPosting.ReverseAsync(
+                dbContext,
+                receipt.Id,
+                DateOnly.FromDateTime(DateTime.UtcNow),
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
+        }
+
+        receipt.Status = nextStatus;
+        receipt.UpdatedAtUtc = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -234,25 +228,6 @@ public static class BillWiseReceiptEndpoints
             true,
             "Bill wise receipt updated successfully.",
             BillWiseReceiptDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var receipt = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (receipt is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Bill wise receipt not found.", null));
-        }
-
-        if (receipt.Status == BillWiseDocumentStatus.Submitted)
-        {
-            ReverseSettlements(receipt.Allocations);
-        }
-
-        dbContext.Set<BillWiseReceipt>().Remove(receipt);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Bill wise receipt deleted successfully.", null));
     }
 
     private static BillWiseReceiptBuildResult BuildBillWiseReceiptRequest(
@@ -514,6 +489,22 @@ public static class BillWiseReceiptEndpoints
             "Draft" => BillWiseDocumentStatus.Draft,
             "Cancelled" => BillWiseDocumentStatus.Cancelled,
             _ => BillWiseDocumentStatus.Submitted
+        };
+    }
+
+    private static string? ValidateStatusTransition(BillWiseDocumentStatus currentStatus, BillWiseDocumentStatus nextStatus)
+    {
+        if (currentStatus == BillWiseDocumentStatus.Cancelled)
+        {
+            return "Cancelled bill wise receipts cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (BillWiseDocumentStatus.Draft, BillWiseDocumentStatus.Submitted) => null,
+            (BillWiseDocumentStatus.Draft, BillWiseDocumentStatus.Cancelled) => null,
+            (BillWiseDocumentStatus.Submitted, BillWiseDocumentStatus.Cancelled) => null,
+            _ => "Only draft bill wise receipts can be submitted, and only submitted bill wise receipts can be cancelled."
         };
     }
 

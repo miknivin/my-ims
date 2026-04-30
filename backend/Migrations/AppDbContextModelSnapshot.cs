@@ -311,6 +311,10 @@ namespace backend.Migrations
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SourceLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_line_id");
+
                     b.Property<string>("SourceType")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -326,6 +330,8 @@ namespace backend.Migrations
                     b.HasIndex("SourceType", "SourceId");
 
                     b.HasIndex("ItemId", "WarehouseId", "PostingDateUtc");
+
+                    b.HasIndex("SourceType", "SourceId", "SourceLineId");
 
                     b.ToTable("fifo_layers", (string)null);
                 });
@@ -498,6 +504,77 @@ namespace backend.Migrations
                     b.ToTable("inventory_balances", (string)null);
                 });
 
+            modelBuilder.Entity("backend.Features.Inventory.InventoryLayerConsumption", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("FifoLayerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("IssueStockLedgerEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("Value")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FifoLayerId");
+
+                    b.HasIndex("IssueStockLedgerEntryId");
+
+                    b.ToTable("inventory_layer_consumptions", (string)null);
+                });
+
+            modelBuilder.Entity("backend.Features.Inventory.InventoryLayerRevaluation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<Guid>("FifoLayerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("NewRate")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("PreviousRate")
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("QuantityAtRevaluation")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("StockLedgerEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ValueDelta")
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FifoLayerId");
+
+                    b.HasIndex("StockLedgerEntryId");
+
+                    b.ToTable("inventory_layer_revaluations", (string)null);
+                });
+
             modelBuilder.Entity("backend.Features.Inventory.StockLedgerEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -534,6 +611,10 @@ namespace backend.Migrations
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SourceLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_line_id");
+
                     b.Property<string>("SourceType")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -555,6 +636,8 @@ namespace backend.Migrations
                     b.HasIndex("SourceType", "SourceId");
 
                     b.HasIndex("ItemId", "WarehouseId", "PostingDateUtc");
+
+                    b.HasIndex("SourceType", "SourceId", "SourceLineId");
 
                     b.ToTable("stock_ledger_entries", (string)null);
                 });
@@ -2829,6 +2912,44 @@ namespace backend.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("backend.Features.Inventory.InventoryLayerConsumption", b =>
+                {
+                    b.HasOne("backend.Features.Inventory.FifoLayer", "FifoLayer")
+                        .WithMany()
+                        .HasForeignKey("FifoLayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("backend.Features.Inventory.StockLedgerEntry", "IssueStockLedgerEntry")
+                        .WithMany()
+                        .HasForeignKey("IssueStockLedgerEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FifoLayer");
+
+                    b.Navigation("IssueStockLedgerEntry");
+                });
+
+            modelBuilder.Entity("backend.Features.Inventory.InventoryLayerRevaluation", b =>
+                {
+                    b.HasOne("backend.Features.Inventory.FifoLayer", "FifoLayer")
+                        .WithMany()
+                        .HasForeignKey("FifoLayerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("backend.Features.Inventory.StockLedgerEntry", "StockLedgerEntry")
+                        .WithMany()
+                        .HasForeignKey("StockLedgerEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("FifoLayer");
+
+                    b.Navigation("StockLedgerEntry");
+                });
+
             modelBuilder.Entity("backend.Features.Inventory.StockLedgerEntry", b =>
                 {
                     b.HasOne("backend.Features.Masters.Products.Product", "Item")
@@ -3877,6 +3998,175 @@ namespace backend.Migrations
 
             modelBuilder.Entity("backend.Features.Settings.AppSettings", b =>
                 {
+                    b.OwnsOne("backend.Features.Settings.AccountingSettings", "AccountingSettings", b1 =>
+                        {
+                            b1.Property<Guid>("AppSettingsId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid?>("CostOfGoodsSoldLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("cost_of_goods_sold_ledger_id");
+
+                            b1.Property<Guid?>("DefaultCashLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("default_cash_ledger_id");
+
+                            b1.Property<Guid?>("DiscountAllowedLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("discount_allowed_ledger_id");
+
+                            b1.Property<Guid?>("DiscountReceivedLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("discount_received_ledger_id");
+
+                            b1.Property<Guid?>("GrnAdditionLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("grn_addition_ledger_id");
+
+                            b1.Property<Guid?>("GrnClearingLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("grn_clearing_ledger_id");
+
+                            b1.Property<Guid?>("GrnDiscountLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("grn_discount_ledger_id");
+
+                            b1.Property<Guid?>("InventoryLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("inventory_ledger_id");
+
+                            b1.Property<Guid?>("PurchaseTaxLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("purchase_tax_ledger_id");
+
+                            b1.Property<Guid?>("RoundOffLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("round_off_ledger_id");
+
+                            b1.Property<Guid?>("SalesLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("sales_ledger_id");
+
+                            b1.Property<Guid?>("SalesTaxLedgerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("sales_tax_ledger_id");
+
+                            b1.HasKey("AppSettingsId");
+
+                            b1.HasIndex("CostOfGoodsSoldLedgerId");
+
+                            b1.HasIndex("DefaultCashLedgerId");
+
+                            b1.HasIndex("DiscountAllowedLedgerId");
+
+                            b1.HasIndex("DiscountReceivedLedgerId");
+
+                            b1.HasIndex("GrnAdditionLedgerId");
+
+                            b1.HasIndex("GrnClearingLedgerId");
+
+                            b1.HasIndex("GrnDiscountLedgerId");
+
+                            b1.HasIndex("InventoryLedgerId");
+
+                            b1.HasIndex("PurchaseTaxLedgerId");
+
+                            b1.HasIndex("RoundOffLedgerId");
+
+                            b1.HasIndex("SalesLedgerId");
+
+                            b1.HasIndex("SalesTaxLedgerId");
+
+                            b1.ToTable("app_settings");
+
+                            b1.WithOwner()
+                                .HasForeignKey("AppSettingsId");
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "CostOfGoodsSoldLedger")
+                                .WithMany()
+                                .HasForeignKey("CostOfGoodsSoldLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "DefaultCashLedger")
+                                .WithMany()
+                                .HasForeignKey("DefaultCashLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "DiscountAllowedLedger")
+                                .WithMany()
+                                .HasForeignKey("DiscountAllowedLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "DiscountReceivedLedger")
+                                .WithMany()
+                                .HasForeignKey("DiscountReceivedLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "GrnAdditionLedger")
+                                .WithMany()
+                                .HasForeignKey("GrnAdditionLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "GrnClearingLedger")
+                                .WithMany()
+                                .HasForeignKey("GrnClearingLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "GrnDiscountLedger")
+                                .WithMany()
+                                .HasForeignKey("GrnDiscountLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "InventoryLedger")
+                                .WithMany()
+                                .HasForeignKey("InventoryLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "PurchaseTaxLedger")
+                                .WithMany()
+                                .HasForeignKey("PurchaseTaxLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "RoundOffLedger")
+                                .WithMany()
+                                .HasForeignKey("RoundOffLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "SalesLedger")
+                                .WithMany()
+                                .HasForeignKey("SalesLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.HasOne("backend.Features.Masters.Ledgers.Ledger", "SalesTaxLedger")
+                                .WithMany()
+                                .HasForeignKey("SalesTaxLedgerId")
+                                .OnDelete(DeleteBehavior.Restrict);
+
+                            b1.Navigation("CostOfGoodsSoldLedger");
+
+                            b1.Navigation("DefaultCashLedger");
+
+                            b1.Navigation("DiscountAllowedLedger");
+
+                            b1.Navigation("DiscountReceivedLedger");
+
+                            b1.Navigation("GrnAdditionLedger");
+
+                            b1.Navigation("GrnClearingLedger");
+
+                            b1.Navigation("GrnDiscountLedger");
+
+                            b1.Navigation("InventoryLedger");
+
+                            b1.Navigation("PurchaseTaxLedger");
+
+                            b1.Navigation("RoundOffLedger");
+
+                            b1.Navigation("SalesLedger");
+
+                            b1.Navigation("SalesTaxLedger");
+                        });
+
                     b.OwnsOne("backend.Features.Settings.GeneralSettings", "General", b1 =>
                         {
                             b1.Property<Guid>("AppSettingsId")
@@ -4070,6 +4360,9 @@ namespace backend.Migrations
                             b1.Navigation("StockControl")
                                 .IsRequired();
                         });
+
+                    b.Navigation("AccountingSettings")
+                        .IsRequired();
 
                     b.Navigation("General")
                         .IsRequired();

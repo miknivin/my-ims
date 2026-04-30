@@ -5,7 +5,7 @@ import {
   useLazyGetProductByIdQuery,
   useLazyGetProductsQuery,
 } from "../../../../../app/api/productApi";
-import { Warehouse } from "../../../../../app/api/warehouseApi";
+import { useLazyGetWarehousesQuery } from "../../../../../app/api/warehouseApi";
 import AutocompleteSelect from "../../../../form/AutocompleteSelect";
 import { TransactionLineColumnDefinition } from "../../shared/transactionLineItems";
 import {
@@ -17,7 +17,6 @@ import { SalesInvoiceLineState } from "../types/types";
 
 export interface SalesInvoiceLineColumnRenderContext {
   line: SalesInvoiceLineState;
-  warehouses: Warehouse[];
   onChange: (rowId: string, patch: Partial<SalesInvoiceLineState>) => void;
 }
 
@@ -62,6 +61,7 @@ function getDefaultCostRate(product: Product) {
 export function useSalesInvoiceLineColumns() {
   const [searchProducts] = useLazyGetProductsQuery();
   const [getProductById] = useLazyGetProductByIdQuery();
+  const [searchWarehouses] = useLazyGetWarehousesQuery();
 
   return useMemo<SalesInvoiceLineColumnDefinition[]>(() => {
     const sortAccessors: Record<
@@ -241,29 +241,12 @@ export function useSalesInvoiceLineColumns() {
           {formatReadonlyValue(line.grossProfitAmount)}
         </div>
       ),
-      warehouseId: ({ line, onChange, warehouses }) => (
+      warehouseId: ({ line, onChange }) => (
         <AutocompleteSelect
-          value={
-            warehouses.find((warehouse) => warehouse.id === line.warehouseId)
-              ?.name ?? line.warehouseName
-          }
+          value={line.warehouseName}
           className="bg-transparent text-xs"
           placeholder="Search warehouse"
-          search={async (keyword) => {
-            const normalizedKeyword = keyword.trim().toLowerCase();
-
-            return warehouses
-              .filter((warehouse) =>
-                [
-                  warehouse.name,
-                  warehouse.code,
-                  warehouse.contactPerson ?? "",
-                ].some((value) =>
-                  value.toLowerCase().includes(normalizedKeyword),
-                ),
-              )
-              .slice(0, 10);
-          }}
+          search={(keyword) => searchWarehouses({ keyword, limit: 10 }).unwrap()}
           getItems={(result) => result}
           getOptionKey={(item) => item.id}
           getOptionLabel={(item) =>
@@ -296,5 +279,5 @@ export function useSalesInvoiceLineColumns() {
       getSortValue: sortAccessors[column.key],
       renderCell: renderers[column.key],
     }));
-  }, [getProductById, searchProducts]);
+  }, [getProductById, searchProducts, searchWarehouses]);
 }

@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { ApiResponse } from "../../types/filtering";
+import { buildQueryParams } from "./queryUtils";
 
 export type SalesInvoiceReferenceType =
   | "SalesOrder"
@@ -176,6 +177,11 @@ export interface SalesInvoicePayload {
   };
 }
 
+export interface SalesInvoiceListQueryParams {
+  keyword?: string;
+  limit?: number;
+}
+
 export const salesInvoiceApi = createApi({
   reducerPath: "salesInvoiceApi",
   baseQuery: fetchBaseQuery({
@@ -184,8 +190,11 @@ export const salesInvoiceApi = createApi({
   }),
   tagTypes: ["SalesInvoice"],
   endpoints: (builder) => ({
-    getSalesInvoices: builder.query<SalesInvoiceListItem[], void>({
-      query: () => "/",
+    getSalesInvoices: builder.query<SalesInvoiceListItem[], SalesInvoiceListQueryParams | void>({
+      query: (params) => ({
+        url: "/",
+        params: buildQueryParams(params ?? undefined),
+      }),
       transformResponse: (response: ApiResponse<SalesInvoiceListItem[]>) =>
         response.data,
       providesTags: ["SalesInvoice"],
@@ -231,6 +240,7 @@ export const salesInvoiceApi = createApi({
 
 export const {
   useGetSalesInvoicesQuery,
+  useLazyGetSalesInvoicesQuery,
   useGetSalesInvoiceByIdQuery,
   useLazyGetSalesInvoiceByIdQuery,
   useCreateSalesInvoiceMutation,

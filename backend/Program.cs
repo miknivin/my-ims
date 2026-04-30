@@ -18,6 +18,7 @@ using backend.Features.Transactions.BillWisePayments;
 using backend.Features.Transactions.BillWiseReceipts;
 using backend.Features.Transactions.PurchaseCreditNotes;
 using backend.Features.Transactions.PurchaseDebitNotes;
+using backend.Features.Transactions.PurchaseInvoiceAi;
 using backend.Features.Transactions.PurchaseInvoices;
 using backend.Features.Transactions.PurchaseOrders;
 using backend.Features.Transactions.SalesCreditNotes;
@@ -31,9 +32,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+LoadDotEnv(builder.Environment.ContentRootPath);
+builder.Configuration.AddEnvironmentVariables();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHttpClient<PurchaseInvoiceAiMappingService>();
+builder.Services.AddScoped<PurchaseInvoiceAiMasterMatchService>();
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<AuthBootstrapOptions>(builder.Configuration.GetSection(AuthBootstrapOptions.SectionName));
@@ -77,7 +82,7 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
-
+builder.Services.AddAntiforgery();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
@@ -119,7 +124,7 @@ app.UseHttpsRedirection();
 app.UseCors("frontend");
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.UseAntiforgery();
 app.MapGet("/", () => Results.Ok(new { message = "IMS backend is running." }));
 app.MapAuthEndpoints();
 app.MapLookupEndpoints();
@@ -139,6 +144,7 @@ app.MapBillWisePaymentEndpoints();
 app.MapBillWiseReceiptEndpoints();
 app.MapPurchaseCreditNoteEndpoints();
 app.MapPurchaseDebitNoteEndpoints();
+app.MapPurchaseInvoiceAiEndpoints();
 app.MapPurchaseInvoiceEndpoints();
 app.MapPurchaseOrderEndpoints();
 app.MapSalesCreditNoteEndpoints();
@@ -149,4 +155,37 @@ app.MapSettingsEndpoints();
 app.MapGoodsReceiptNoteEndpoints();
 
 app.Run();
+
+static void LoadDotEnv(string contentRootPath)
+{
+    var envPath = Path.Combine(contentRootPath, ".env");
+    if (!File.Exists(envPath))
+    {
+        return;
+    }
+
+    foreach (var rawLine in File.ReadAllLines(envPath))
+    {
+        var line = rawLine.Trim();
+        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#", StringComparison.Ordinal))
+        {
+            continue;
+        }
+
+        var separatorIndex = line.IndexOf('=');
+        if (separatorIndex <= 0)
+        {
+            continue;
+        }
+
+        var key = line[..separatorIndex].Trim();
+        var value = line[(separatorIndex + 1)..].Trim().Trim('"');
+        if (string.IsNullOrWhiteSpace(key) || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(key)))
+        {
+            continue;
+        }
+
+        Environment.SetEnvironmentVariable(key, value);
+    }
+}
 

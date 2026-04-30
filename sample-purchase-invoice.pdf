@@ -1,0 +1,54 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Length 583 >>
+stream
+BT
+/F1 12 Tf
+50 760 Td
+(PURCHASE INVOICE) Tj
+0 -18 Td
+(Vendor: ACME SUPPLIES PVT LTD) Tj
+0 -18 Td
+(Address: 22 Market Road, Kochi, Kerala 682001) Tj
+0 -18 Td
+(PI No: PI-TEST-1001) Tj
+0 -18 Td
+(Invoice Date: 2026-04-28  Due Date: 2026-05-05) Tj
+0 -18 Td
+(Supplier Invoice No: SUP-7781  Payment: Credit  Currency: INR) Tj
+0 -24 Td
+(Item 1  USB Keyboard  HSN 8471  Qty 2 PCS  Rate 850  Tax 18%) Tj
+0 -18 Td
+(Item 2  Thermal Paper Roll  HSN 4811  Qty 10 PCS  Rate 65  Tax 18%) Tj
+0 -24 Td
+(Subtotal: 2350.00  Tax: 423.00  Net Total: 2773.00) Tj
+0 -18 Td
+(For AI mapping test only) Tj
+ET
+endstream
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000000311 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+944
+%%EOF

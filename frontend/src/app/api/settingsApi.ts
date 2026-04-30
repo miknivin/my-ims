@@ -40,6 +40,32 @@ export interface AppSettings {
       requireExpiryForBatchItems: boolean;
     };
   };
+  accountingSettings: {
+    discountAllowedLedgerId: string | null;
+    discountAllowedLedgerName: string | null;
+    discountReceivedLedgerId: string | null;
+    discountReceivedLedgerName: string | null;
+    inventoryLedgerId: string | null;
+    inventoryLedgerName: string | null;
+    salesLedgerId: string | null;
+    salesLedgerName: string | null;
+    costOfGoodsSoldLedgerId: string | null;
+    costOfGoodsSoldLedgerName: string | null;
+    grnClearingLedgerId: string | null;
+    grnClearingLedgerName: string | null;
+    purchaseTaxLedgerId: string | null;
+    purchaseTaxLedgerName: string | null;
+    salesTaxLedgerId: string | null;
+    salesTaxLedgerName: string | null;
+    defaultCashLedgerId: string | null;
+    defaultCashLedgerName: string | null;
+    grnAdditionLedgerId: string | null;
+    grnAdditionLedgerName: string | null;
+    grnDiscountLedgerId: string | null;
+    grnDiscountLedgerName: string | null;
+    roundOffLedgerId: string | null;
+    roundOffLedgerName: string | null;
+  };
   createdAtUtc: string;
   updatedAtUtc: string;
 }
@@ -78,6 +104,20 @@ export interface AppSettingsPayload {
       enableSerialTracking: boolean;
       requireExpiryForBatchItems: boolean;
     };
+  };
+  accountingSettings: {
+    discountAllowedLedgerId: string | null;
+    discountReceivedLedgerId: string | null;
+    inventoryLedgerId: string | null;
+    salesLedgerId: string | null;
+    costOfGoodsSoldLedgerId: string | null;
+    grnClearingLedgerId: string | null;
+    purchaseTaxLedgerId: string | null;
+    salesTaxLedgerId: string | null;
+    defaultCashLedgerId: string | null;
+    grnAdditionLedgerId: string | null;
+    grnDiscountLedgerId: string | null;
+    roundOffLedgerId: string | null;
   };
 }
 

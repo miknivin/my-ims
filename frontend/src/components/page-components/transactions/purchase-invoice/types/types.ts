@@ -130,6 +130,7 @@ export interface PurchaseInvoiceFormState {
   items: PurchaseInvoiceLineState[];
   additions: PurchaseInvoiceAdditionState[];
   footer: PurchaseInvoiceFooterState;
+  status?:"Draft" | "Submitted" | "Cancelled"
 }
 
 type LegacyPurchaseInvoiceSeed = Partial<PurchaseInvoiceFormState> & {

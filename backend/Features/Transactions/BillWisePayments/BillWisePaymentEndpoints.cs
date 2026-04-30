@@ -16,8 +16,7 @@ public static class BillWisePaymentEndpoints
         group.MapGet("/outstanding-invoices", GetOutstandingInvoicesAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateAsync);
 
         return app;
     }
@@ -143,6 +142,15 @@ public static class BillWisePaymentEndpoints
         if (buildResult.Payment.Status == BillWiseDocumentStatus.Submitted)
         {
             ApplySettlements(buildResult.Payment.Allocations);
+
+            var journalError = await BillWisePaymentJournalPosting.PostAsync(
+                dbContext,
+                buildResult.Payment,
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
         }
 
         dbContext.Set<BillWisePayment>().Add(buildResult.Payment);
@@ -156,7 +164,7 @@ public static class BillWisePaymentEndpoints
 
     private static async Task<IResult> UpdateAsync(
         Guid id,
-        UpdateBillWisePaymentRequest request,
+        UpdateBillWisePaymentStatusRequest request,
         AppDbContext dbContext,
         CancellationToken cancellationToken)
     {
@@ -166,66 +174,52 @@ public static class BillWisePaymentEndpoints
             return TypedResults.NotFound(new ApiResponse<object>(false, "Bill wise payment not found.", null));
         }
 
-        var buildResult = BuildBillWisePaymentRequest(
-            request.Document,
-            request.VendorInformation,
-            request.AccountInformation,
-            request.PaymentDetails,
-            request.Allocations,
-            request.Status,
-            payment.Status);
-        if (buildResult.Error is not null)
+        var nextStatus = ParseStatus(request.Status, payment.Status);
+        if (payment.Status == nextStatus)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<BillWisePaymentDto>(
+                true,
+                "Bill wise payment updated successfully.",
+                BillWisePaymentDto.FromEntity(unchanged)));
         }
 
-        if (await dbContext.Set<BillWisePayment>().AnyAsync(current => current.Id != id && current.No == buildResult.Payment.No, cancellationToken))
+        var transitionError = ValidateStatusTransition(payment.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Bill wise payment number already exists.", null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        var previousSettlements = payment.Status == BillWiseDocumentStatus.Submitted
-            ? payment.Allocations
-                .GroupBy(current => current.PurchaseInvoiceId)
-                .ToDictionary(
-                    group => group.Key,
-                    group => Math.Round(group.Sum(item => item.PaidAmount + item.DiscountAmount), 2, MidpointRounding.AwayFromZero))
-            : new Dictionary<Guid, decimal>();
-
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult.Payment, previousSettlements, cancellationToken);
-        if (resolutionError is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
-        }
-
-        if (payment.Status == BillWiseDocumentStatus.Submitted)
-        {
-            ReverseSettlements(payment.Allocations);
-        }
-
-        payment.No = buildResult.Payment.No;
-        payment.Date = buildResult.Payment.Date;
-        payment.ReferenceNo = buildResult.Payment.ReferenceNo;
-        payment.InstrumentNo = buildResult.Payment.InstrumentNo;
-        payment.InstrumentDate = buildResult.Payment.InstrumentDate;
-        payment.Notes = buildResult.Payment.Notes;
-        payment.TotalAllocated = buildResult.Payment.TotalAllocated;
-        payment.TotalDiscount = buildResult.Payment.TotalDiscount;
-        payment.Advance = buildResult.Payment.Advance;
-        payment.Amount = buildResult.Payment.Amount;
-        payment.Status = buildResult.Payment.Status;
-        payment.UpdatedAtUtc = DateTime.UtcNow;
-        payment.VoucherType = BillWiseVoucherType.Payment;
-        payment.VendorInformation = buildResult.Payment.VendorInformation;
-        payment.AccountInformation = buildResult.Payment.AccountInformation;
-
-        dbContext.RemoveRange(payment.Allocations);
-        payment.Allocations = buildResult.Payment.Allocations;
-
-        if (payment.Status == BillWiseDocumentStatus.Submitted)
+        if (nextStatus == BillWiseDocumentStatus.Submitted)
         {
             ApplySettlements(payment.Allocations);
+
+            var journalError = await BillWisePaymentJournalPosting.PostAsync(
+                dbContext,
+                payment,
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
         }
+        else if (payment.Status == BillWiseDocumentStatus.Submitted && nextStatus == BillWiseDocumentStatus.Cancelled)
+        {
+            ReverseSettlements(payment.Allocations);
+
+            var journalError = await BillWisePaymentJournalPosting.ReverseAsync(
+                dbContext,
+                payment.Id,
+                DateOnly.FromDateTime(DateTime.UtcNow),
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
+        }
+
+        payment.Status = nextStatus;
+        payment.UpdatedAtUtc = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -234,25 +228,6 @@ public static class BillWisePaymentEndpoints
             true,
             "Bill wise payment updated successfully.",
             BillWisePaymentDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var payment = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (payment is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Bill wise payment not found.", null));
-        }
-
-        if (payment.Status == BillWiseDocumentStatus.Submitted)
-        {
-            ReverseSettlements(payment.Allocations);
-        }
-
-        dbContext.Set<BillWisePayment>().Remove(payment);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Bill wise payment deleted successfully.", null));
     }
 
     private static BillWisePaymentBuildResult BuildBillWisePaymentRequest(
@@ -516,6 +491,22 @@ public static class BillWisePaymentEndpoints
             "Draft" => BillWiseDocumentStatus.Draft,
             "Cancelled" => BillWiseDocumentStatus.Cancelled,
             _ => BillWiseDocumentStatus.Submitted
+        };
+    }
+
+    private static string? ValidateStatusTransition(BillWiseDocumentStatus currentStatus, BillWiseDocumentStatus nextStatus)
+    {
+        if (currentStatus == BillWiseDocumentStatus.Cancelled)
+        {
+            return "Cancelled bill wise payments cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (BillWiseDocumentStatus.Draft, BillWiseDocumentStatus.Submitted) => null,
+            (BillWiseDocumentStatus.Draft, BillWiseDocumentStatus.Cancelled) => null,
+            (BillWiseDocumentStatus.Submitted, BillWiseDocumentStatus.Cancelled) => null,
+            _ => "Only draft bill wise payments can be submitted, and only submitted bill wise payments can be cancelled."
         };
     }
 

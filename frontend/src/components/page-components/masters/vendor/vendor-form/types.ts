@@ -5,7 +5,7 @@ export interface VendorBasicInfoFormState {
   name: string;
   under: string;
   status: VendorStatus;
-  ledgerId: string;
+  ledgerGroupId: string;
 }
 
 export interface VendorAddressAndContactFormState {
@@ -64,7 +64,7 @@ export const createVendorFormState = (vendor?: Vendor | null): VendorFormState =
     name: vendor?.basicInfo.name ?? "",
     under: vendor?.basicInfo.under ?? "",
     status: vendor?.status ?? "Active",
-    ledgerId: vendor?.ledgerId ?? "",
+    ledgerGroupId: vendor?.ledgerGroupId ?? "",
   },
   addressAndContact: {
     contactName: vendor?.addressAndContact.contactName ?? "",
@@ -133,7 +133,7 @@ export const toVendorPayload = (state: VendorFormState): VendorPayload => ({
     gstin: state.taxAndCompliance.gstin.trim() || null,
     tin: state.taxAndCompliance.tin.trim() || null,
   },
-  ledgerId: state.basicInfo.ledgerId || null,
+  ledgerGroupId: state.basicInfo.ledgerGroupId,
   bankDetails: {
     bankDetails: state.bankDetails.bankDetails.trim() || null,
     accountNo: state.bankDetails.accountNo.trim() || null,

@@ -69,5 +69,81 @@ public sealed class SettingsConfiguration : IEntityTypeConfiguration<AppSettings
                 batchSerial.Property(value => value.RequireExpiryForBatchItems).HasColumnName("require_expiry_for_batch_items");
             });
         });
+
+        builder.OwnsOne(current => current.AccountingSettings, accounting =>
+        {
+            accounting.Property(value => value.DiscountAllowedLedgerId).HasColumnName("discount_allowed_ledger_id");
+            accounting.Property(value => value.DiscountReceivedLedgerId).HasColumnName("discount_received_ledger_id");
+            accounting.Property(value => value.InventoryLedgerId).HasColumnName("inventory_ledger_id");
+            accounting.Property(value => value.SalesLedgerId).HasColumnName("sales_ledger_id");
+            accounting.Property(value => value.CostOfGoodsSoldLedgerId).HasColumnName("cost_of_goods_sold_ledger_id");
+            accounting.Property(value => value.GrnClearingLedgerId).HasColumnName("grn_clearing_ledger_id");
+            accounting.Property(value => value.PurchaseTaxLedgerId).HasColumnName("purchase_tax_ledger_id");
+            accounting.Property(value => value.SalesTaxLedgerId).HasColumnName("sales_tax_ledger_id");
+            accounting.Property(value => value.DefaultCashLedgerId).HasColumnName("default_cash_ledger_id");
+            accounting.Property(value => value.GrnAdditionLedgerId).HasColumnName("grn_addition_ledger_id");
+            accounting.Property(value => value.GrnDiscountLedgerId).HasColumnName("grn_discount_ledger_id");
+            accounting.Property(value => value.RoundOffLedgerId).HasColumnName("round_off_ledger_id");
+
+            accounting.HasOne(value => value.DiscountAllowedLedger)
+                .WithMany()
+                .HasForeignKey(value => value.DiscountAllowedLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.DiscountReceivedLedger)
+                .WithMany()
+                .HasForeignKey(value => value.DiscountReceivedLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.InventoryLedger)
+                .WithMany()
+                .HasForeignKey(value => value.InventoryLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.SalesLedger)
+                .WithMany()
+                .HasForeignKey(value => value.SalesLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.CostOfGoodsSoldLedger)
+                .WithMany()
+                .HasForeignKey(value => value.CostOfGoodsSoldLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.GrnClearingLedger)
+                .WithMany()
+                .HasForeignKey(value => value.GrnClearingLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.PurchaseTaxLedger)
+                .WithMany()
+                .HasForeignKey(value => value.PurchaseTaxLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.SalesTaxLedger)
+                .WithMany()
+                .HasForeignKey(value => value.SalesTaxLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.DefaultCashLedger)
+                .WithMany()
+                .HasForeignKey(value => value.DefaultCashLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.GrnAdditionLedger)
+                .WithMany()
+                .HasForeignKey(value => value.GrnAdditionLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.GrnDiscountLedger)
+                .WithMany()
+                .HasForeignKey(value => value.GrnDiscountLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            accounting.HasOne(value => value.RoundOffLedger)
+                .WithMany()
+                .HasForeignKey(value => value.RoundOffLedgerId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }

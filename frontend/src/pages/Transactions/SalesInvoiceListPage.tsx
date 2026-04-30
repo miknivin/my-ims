@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useGetSalesInvoicesQuery } from "../../app/api/salesInvoiceApi";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
@@ -7,7 +8,10 @@ import SalesInvoiceTable from "../../components/tables/SalesInvoiceTable";
 
 export default function SalesInvoiceListPage() {
   const navigate = useNavigate();
-  const { data = [], isLoading, isError } = useGetSalesInvoicesQuery();
+  const [keyword, setKeyword] = useState("");
+  const { data = [], isLoading, isError } = useGetSalesInvoicesQuery({
+    keyword,
+  });
 
   const salesInvoices = data;
 
@@ -15,7 +19,13 @@ export default function SalesInvoiceListPage() {
     <div className="w-full">
       <PageBreadcrumb pageTitle="Sales Invoice" />
 
-      <div className="my-5 flex w-full flex-col items-start justify-end gap-2 lg:flex-row lg:items-center lg:gap-0">
+      <div className="my-5 flex w-full flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <input
+          className="h-10 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 lg:max-w-sm"
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          placeholder="Search invoice or customer"
+        />
         <Button
           type="button"
           size="sm"

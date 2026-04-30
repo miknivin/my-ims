@@ -1,5 +1,11 @@
+import { useMemo } from "react";
 import { ProductStatus } from "../../../../../../app/api/productApi";
-import { useGetTaxesQuery } from "../../../../../../app/api/taxApi";
+import {
+  useLazySearchLookupQuery,
+  useResolveLookupsQuery,
+} from "../../../../../../app/api/lookupApi";
+import { LookupOption } from "../../../../../../types/filtering";
+import AutocompleteSelect from "../../../../../form/AutocompleteSelect";
 import Label from "../../../../../form/Label";
 import Input from "../../../../../form/input/InputField";
 import { useProductForm } from "../ProductFormContext";
@@ -7,7 +13,19 @@ import SectionCard from "../SectionCard";
 
 export default function BasicInfoSection() {
   const { state, setSection } = useProductForm();
-  const { data: taxes = [] } = useGetTaxesQuery();
+  const [searchLookup] = useLazySearchLookupQuery();
+  const resolveItems = useMemo(
+    () =>
+      state.basicInfo.taxId
+        ? [{ source: "taxes" as const, ids: [state.basicInfo.taxId] }]
+        : [],
+    [state.basicInfo.taxId],
+  );
+  const { data: resolvedLookups = [] } = useResolveLookupsQuery(
+    { items: resolveItems },
+    { skip: resolveItems.length === 0 },
+  );
+  const resolvedTaxLabel = resolvedLookups[0]?.options[0]?.label ?? "";
 
   return (
     <SectionCard title="Basic Product Info">
@@ -26,10 +44,28 @@ export default function BasicInfoSection() {
         </div>
         <div className="mb-2">
           <Label>Tax Group</Label>
-          <select value={state.basicInfo.taxId} onChange={(event) => setSection("basicInfo", { taxId: event.target.value })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
-            <option value="">Select a tax</option>
-            {taxes.map((tax) => <option key={tax.id} value={tax.id}>{tax.name}</option>)}
-          </select>
+          <AutocompleteSelect<LookupOption, LookupOption[]>
+            value={resolvedTaxLabel}
+            placeholder="Search tax group"
+            search={(keyword) =>
+              searchLookup({
+                source: "taxes",
+                keyword,
+                limit: 10,
+              })
+            }
+            getItems={(result) => result}
+            getOptionKey={(item) => item.id}
+            getOptionLabel={(item) =>
+              item.secondaryLabel ? `${item.label} (${item.secondaryLabel})` : item.label
+            }
+            onInputChange={(value) => {
+              if (!value.trim()) {
+                setSection("basicInfo", { taxId: "" });
+              }
+            }}
+            onSelect={(item) => setSection("basicInfo", { taxId: item?.id ?? "" })}
+          />
         </div>
         <div className="mb-2">
           <Label>Status</Label>

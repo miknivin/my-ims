@@ -1,6 +1,6 @@
 import { ReactNode, useMemo } from "react";
-import { Uom } from "../../../../../app/api/uomApi";
-import { Warehouse } from "../../../../../app/api/warehouseApi";
+import { useLazyGetUomsQuery } from "../../../../../app/api/uomApi";
+import { useLazyGetWarehousesQuery } from "../../../../../app/api/warehouseApi";
 import {
   Product,
   ProductListItem,
@@ -18,13 +18,12 @@ import { TransactionLineColumnDefinition } from "../../shared/transactionLineIte
 
 export interface PurchaseInvoiceLineColumnRenderContext {
   line: PurchaseInvoiceLineState;
-  uoms: Uom[];
-  warehouses: Warehouse[];
   onChange: (rowId: string, patch: Partial<PurchaseInvoiceLineState>) => void;
 }
 
 export interface PurchaseInvoiceLineColumnDefinition
-  extends TransactionLineColumnDefinition<
+  extends
+    TransactionLineColumnDefinition<
       PurchaseInvoiceLineState,
       PurchaseInvoiceLineColumnRenderContext,
       PurchaseInvoiceLineColumnKey
@@ -69,6 +68,8 @@ function getPurchasePricing(product: Product) {
 export function usePurchaseInvoiceLineColumns() {
   const [searchProducts] = useLazyGetProductsQuery();
   const [getProductById] = useLazyGetProductByIdQuery();
+  const [searchUoms] = useLazyGetUomsQuery();
+  const [searchWarehouses] = useLazyGetWarehousesQuery();
 
   return useMemo<PurchaseInvoiceLineColumnDefinition[]>(() => {
     const sortAccessors: Record<
@@ -142,6 +143,7 @@ export function usePurchaseInvoiceLineColumns() {
             try {
               const product = await getProductById(item.id).unwrap();
               const pricing = getPurchasePricing(product);
+              console.log(product, "product");
 
               onChange(line.rowId, {
                 productId: product.id,
@@ -151,9 +153,9 @@ export function usePurchaseInvoiceLineColumns() {
                 unitId: product.stockAndMeasurement.purchaseUomId,
                 unitName: product.stockAndMeasurement.purchaseUomName,
                 rate: `${product.pricingAndRates.purchaseRate ?? 0}`,
-                sellingRate: `${pricing.sellingRate}`,
-                wholesaleRate: `${pricing.wholesaleRate}`,
-                mrp: `${pricing.mrp}`,
+                sellingRate: `${pricing?.sellingRate}`,
+                wholesaleRate: `${pricing?.wholesaleRate}`,
+                mrp: `${pricing?.mrp}`,
               });
             } catch {
               // Keep the typed product label if detail hydration fails.
@@ -189,28 +191,35 @@ export function usePurchaseInvoiceLineColumns() {
           min="0"
           step="0.01"
           value={line.foc}
-          onChange={(event) => onChange(line.rowId, { foc: event.target.value })}
+          onChange={(event) =>
+            onChange(line.rowId, { foc: event.target.value })
+          }
         />
       ),
-      unitId: ({ line, onChange, uoms }) => (
-        <select
-          className={inputClass}
-          value={line.unitId ?? ""}
-          onChange={(event) => {
-            const selected = uoms.find((uom) => uom.id === event.target.value);
+      unitId: ({ line, onChange }) => (
+        <AutocompleteSelect
+          value={line.unitName}
+          className="bg-transparent text-xs"
+          placeholder="Search UOM"
+          search={(keyword) => searchUoms({ keyword, limit: 10 }).unwrap()}
+          getItems={(result) => result}
+          getOptionKey={(item) => item.id}
+          getOptionLabel={(item) =>
+            item.code ? `${item.name} (${item.code})` : item.name
+          }
+          onInputChange={(value) =>
             onChange(line.rowId, {
-              unitId: selected?.id ?? null,
-              unitName: selected?.name ?? "",
-            });
-          }}
-        >
-          <option value="">Unit</option>
-          {uoms.map((uom) => (
-            <option key={uom.id} value={uom.id}>
-              {uom.name}
-            </option>
-          ))}
-        </select>
+              unitId: null,
+              unitName: value,
+            })
+          }
+          onSelect={(item) =>
+            onChange(line.rowId, {
+              unitId: item?.id ?? null,
+              unitName: item?.name ?? "",
+            })
+          }
+        />
       ),
       rate: ({ line, onChange }) => (
         <input
@@ -219,7 +228,9 @@ export function usePurchaseInvoiceLineColumns() {
           min="0"
           step="0.01"
           value={line.rate}
-          onChange={(event) => onChange(line.rowId, { rate: event.target.value })}
+          onChange={(event) =>
+            onChange(line.rowId, { rate: event.target.value })
+          }
         />
       ),
       grossAmount: ({ line }) => (
@@ -312,32 +323,19 @@ export function usePurchaseInvoiceLineColumns() {
           min="0"
           step="0.01"
           value={line.mrp}
-          onChange={(event) => onChange(line.rowId, { mrp: event.target.value })}
+          onChange={(event) =>
+            onChange(line.rowId, { mrp: event.target.value })
+          }
         />
       ),
-      warehouseId: ({ line, onChange, warehouses }) => (
+      warehouseId: ({ line, onChange }) => (
         <AutocompleteSelect
-          value={
-            warehouses.find((warehouse) => warehouse.id === line.warehouseId)
-              ?.name ?? line.warehouseName
-          }
+          value={line.warehouseName}
           className="bg-transparent text-xs"
           placeholder="Search warehouse"
-          search={async (keyword) => {
-            const normalizedKeyword = keyword.trim().toLowerCase();
-
-            return warehouses
-              .filter((warehouse) =>
-                [
-                  warehouse.name,
-                  warehouse.code,
-                  warehouse.contactPerson ?? "",
-                ].some((value) =>
-                  value.toLowerCase().includes(normalizedKeyword),
-                ),
-              )
-              .slice(0, 10);
-          }}
+          search={(keyword) =>
+            searchWarehouses({ keyword, limit: 10 }).unwrap()
+          }
           getItems={(result) => result}
           getOptionKey={(item) => item.id}
           getOptionLabel={(item) =>
@@ -370,5 +368,5 @@ export function usePurchaseInvoiceLineColumns() {
       getSortValue: sortAccessors[column.key],
       renderCell: renderers[column.key],
     }));
-  }, [getProductById, searchProducts]);
+  }, [getProductById, searchProducts, searchUoms, searchWarehouses]);
 }

@@ -1,5 +1,10 @@
-import { useGetCategoriesQuery } from "../../../../../../app/api/categoryApi";
-import { useSearchLookupQuery } from "../../../../../../app/api/lookupApi";
+import { useMemo } from "react";
+import {
+  useLazySearchLookupQuery,
+  useResolveLookupsQuery,
+} from "../../../../../../app/api/lookupApi";
+import { LookupOption } from "../../../../../../types/filtering";
+import AutocompleteSelect from "../../../../../form/AutocompleteSelect";
 import Label from "../../../../../form/Label";
 import Input from "../../../../../form/input/InputField";
 import { useProductForm } from "../ProductFormContext";
@@ -17,12 +22,73 @@ const toggles = [
 
 export default function PropertiesSection() {
   const { state, setSection } = useProductForm();
-  const { data: categories = [] } = useGetCategoriesQuery();
-  const { data: vendors = [] } = useSearchLookupQuery({
-    source: "vendors",
-    keyword: "",
-    limit: 100,
-  });
+  const [searchLookup] = useLazySearchLookupQuery();
+
+  const resolveItems = useMemo(
+    () =>
+      [
+        state.categorization.groupCategoryId
+          ? {
+              source: "categories" as const,
+              ids: [state.categorization.groupCategoryId],
+            }
+          : null,
+        state.categorization.subGroupCategoryId
+          ? {
+              source: "categories" as const,
+              ids: [state.categorization.subGroupCategoryId],
+            }
+          : null,
+        state.categorization.vendorId
+          ? {
+              source: "vendors" as const,
+              ids: [state.categorization.vendorId],
+            }
+          : null,
+      ].filter(Boolean) as Array<{ source: "categories" | "vendors"; ids: string[] }>,
+    [
+      state.categorization.groupCategoryId,
+      state.categorization.subGroupCategoryId,
+      state.categorization.vendorId,
+    ],
+  );
+
+  const { data: resolvedLookups = [] } = useResolveLookupsQuery(
+    { items: resolveItems },
+    { skip: resolveItems.length === 0 },
+  );
+
+  const resolvedLabels = useMemo(() => {
+    const labels = {
+      groupCategoryId: "",
+      subGroupCategoryId: "",
+      vendorId: "",
+    };
+
+    let resultIndex = 0;
+
+    if (state.categorization.groupCategoryId) {
+      labels.groupCategoryId = resolvedLookups[resultIndex]?.options[0]?.label ?? "";
+      resultIndex += 1;
+    }
+
+    if (state.categorization.subGroupCategoryId) {
+      labels.subGroupCategoryId =
+        resolvedLookups[resultIndex]?.options[0]?.label ?? "";
+      resultIndex += 1;
+    }
+
+    if (state.categorization.vendorId) {
+      labels.vendorId = resolvedLookups[resultIndex]?.options[0]?.label ?? "";
+    }
+
+    return labels;
+  }, [
+    resolvedLookups,
+    state.categorization.groupCategoryId,
+    state.categorization.subGroupCategoryId,
+    state.categorization.vendorId,
+  ]);
 
   return (
     <SectionCard title="Product Properties">
@@ -42,24 +108,84 @@ export default function PropertiesSection() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="mb-2">
             <Label>Group</Label>
-            <select value={state.categorization.groupCategoryId} onChange={(event) => setSection("categorization", { groupCategoryId: event.target.value })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
-              <option value="">Select category</option>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-            </select>
+            <AutocompleteSelect<LookupOption, LookupOption[]>
+              value={resolvedLabels.groupCategoryId}
+              placeholder="Search category"
+              search={(keyword) =>
+                searchLookup({
+                  source: "categories",
+                  keyword,
+                  limit: 10,
+                })
+              }
+              getItems={(result) => result}
+              getOptionKey={(item) => item.id}
+              getOptionLabel={(item) =>
+                item.secondaryLabel ? `${item.label} (${item.secondaryLabel})` : item.label
+              }
+              onInputChange={(value) => {
+                if (!value.trim()) {
+                  setSection("categorization", { groupCategoryId: "" });
+                }
+              }}
+              onSelect={(item) =>
+                setSection("categorization", { groupCategoryId: item?.id ?? "" })
+              }
+            />
           </div>
           <div className="mb-2">
             <Label>Sub Group</Label>
-            <select value={state.categorization.subGroupCategoryId} onChange={(event) => setSection("categorization", { subGroupCategoryId: event.target.value })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
-              <option value="">Select category</option>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-            </select>
+            <AutocompleteSelect<LookupOption, LookupOption[]>
+              value={resolvedLabels.subGroupCategoryId}
+              placeholder="Search sub-group"
+              search={(keyword) =>
+                searchLookup({
+                  source: "categories",
+                  keyword,
+                  limit: 10,
+                })
+              }
+              getItems={(result) => result}
+              getOptionKey={(item) => item.id}
+              getOptionLabel={(item) =>
+                item.secondaryLabel ? `${item.label} (${item.secondaryLabel})` : item.label
+              }
+              onInputChange={(value) => {
+                if (!value.trim()) {
+                  setSection("categorization", { subGroupCategoryId: "" });
+                }
+              }}
+              onSelect={(item) =>
+                setSection("categorization", { subGroupCategoryId: item?.id ?? "" })
+              }
+            />
           </div>
           <div className="mb-2">
             <Label>Vendor</Label>
-            <select value={state.categorization.vendorId} onChange={(event) => setSection("categorization", { vendorId: event.target.value })} className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800">
-              <option value="">Select vendor</option>
-              {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.label}</option>)}
-            </select>
+            <AutocompleteSelect<LookupOption, LookupOption[]>
+              value={resolvedLabels.vendorId}
+              placeholder="Search vendor"
+              search={(keyword) =>
+                searchLookup({
+                  source: "vendors",
+                  keyword,
+                  limit: 10,
+                })
+              }
+              getItems={(result) => result}
+              getOptionKey={(item) => item.id}
+              getOptionLabel={(item) =>
+                item.secondaryLabel ? `${item.label} (${item.secondaryLabel})` : item.label
+              }
+              onInputChange={(value) => {
+                if (!value.trim()) {
+                  setSection("categorization", { vendorId: "" });
+                }
+              }}
+              onSelect={(item) =>
+                setSection("categorization", { vendorId: item?.id ?? "" })
+              }
+            />
           </div>
           <div className="mb-2">
             <Label>Brand</Label>

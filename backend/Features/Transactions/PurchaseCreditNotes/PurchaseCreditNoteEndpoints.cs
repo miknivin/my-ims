@@ -1,3 +1,4 @@
+using backend.Features.Inventory;
 using backend.Features.Masters.Currencies;
 using backend.Features.Masters.Ledgers;
 using backend.Features.Masters.Products;
@@ -20,8 +21,7 @@ public static class PurchaseCreditNoteEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateStatusAsync);
 
         return app;
     }
@@ -113,68 +113,55 @@ public static class PurchaseCreditNoteEndpoints
         return TypedResults.Created($"/api/transactions/purchase-credit-notes/{purchaseCreditNote.Id}", new ApiResponse<PurchaseCreditNoteDto>(true, "Purchase credit note created successfully.", PurchaseCreditNoteDto.FromEntity(created)));
     }
 
-    private static async Task<IResult> UpdateAsync(Guid id, UpdatePurchaseCreditNoteRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateStatusAsync(
+        Guid id,
+        UpdatePurchaseCreditNoteStatusRequest request,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var buildResult = BuildPurchaseCreditNoteRequest(request.NoteNature, request.SourceRef, request.Document, request.VendorInformation, request.FinancialDetails, request.ProductInformation, request.General, request.Items, request.Additions, request.Footer);
-        if (buildResult.Error is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
-        }
-
         var purchaseCreditNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (purchaseCreditNote is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase credit note not found.", null));
         }
 
-        if (await dbContext.PurchaseCreditNotes.AnyAsync(current => current.Id != id && current.Document.No == buildResult.Document.No, cancellationToken))
+        var nextStatus = string.IsNullOrWhiteSpace(request.Status)
+            ? purchaseCreditNote.Status
+            : ParseStatus(request.Status);
+        if (purchaseCreditNote.Status == nextStatus)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Purchase credit note number already exists.", null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<PurchaseCreditNoteDto>(
+                true,
+                "Purchase credit note updated successfully.",
+                PurchaseCreditNoteDto.FromEntity(unchanged)));
         }
 
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, id, cancellationToken);
-        if (resolutionError is not null)
+        var transitionError = ValidateStatusTransition(purchaseCreditNote.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        purchaseCreditNote.NoteNature = buildResult.NoteNature;
-        purchaseCreditNote.SourceRef = buildResult.SourceRef;
-        purchaseCreditNote.Document = buildResult.Document;
-        purchaseCreditNote.VendorInformation = buildResult.VendorInformation;
-        purchaseCreditNote.FinancialDetails = buildResult.FinancialDetails;
-        purchaseCreditNote.ProductInformation = buildResult.ProductInformation;
-        purchaseCreditNote.General = buildResult.General;
-        purchaseCreditNote.Footer = buildResult.Footer;
-        purchaseCreditNote.Status = string.IsNullOrWhiteSpace(request.Status) ? purchaseCreditNote.Status : ParseStatus(request.Status);
+        if (nextStatus == PurchaseCreditNoteStatus.Cancelled && purchaseCreditNote.AffectsInventory)
+        {
+            await AdjustmentInventoryPosting.RevertAsync(
+                dbContext,
+                StockSourceTypes.PurchaseCreditNote,
+                id,
+                cancellationToken);
+        }
+
+        purchaseCreditNote.Status = nextStatus;
         purchaseCreditNote.UpdatedAtUtc = DateTime.UtcNow;
-
-        dbContext.RemoveRange(purchaseCreditNote.Items);
-        purchaseCreditNote.Items = buildResult.Items;
-        dbContext.RemoveRange(purchaseCreditNote.Additions);
-        purchaseCreditNote.Additions = buildResult.Additions;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
-        return TypedResults.Ok(new ApiResponse<PurchaseCreditNoteDto>(true, "Purchase credit note updated successfully.", PurchaseCreditNoteDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var purchaseCreditNote = await dbContext.PurchaseCreditNotes
-            .Include(current => current.Items)
-            .Include(current => current.Additions)
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (purchaseCreditNote is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase credit note not found.", null));
-        }
-
-        dbContext.PurchaseCreditNotes.Remove(purchaseCreditNote);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Purchase credit note deleted successfully.", null));
+        return TypedResults.Ok(new ApiResponse<PurchaseCreditNoteDto>(
+            true,
+            "Purchase credit note updated successfully.",
+            PurchaseCreditNoteDto.FromEntity(updated)));
     }
 
     private static PurchaseCreditNoteBuildResult BuildPurchaseCreditNoteRequest(
@@ -634,6 +621,24 @@ public static class PurchaseCreditNoteEndpoints
             "Submitted" => PurchaseCreditNoteStatus.Submitted,
             "Cancelled" => PurchaseCreditNoteStatus.Cancelled,
             _ => PurchaseCreditNoteStatus.Draft
+        };
+    }
+
+    private static string? ValidateStatusTransition(
+        PurchaseCreditNoteStatus currentStatus,
+        PurchaseCreditNoteStatus nextStatus)
+    {
+        if (currentStatus == PurchaseCreditNoteStatus.Cancelled)
+        {
+            return "Cancelled purchase credit notes cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (PurchaseCreditNoteStatus.Draft, PurchaseCreditNoteStatus.Submitted) => null,
+            (PurchaseCreditNoteStatus.Draft, PurchaseCreditNoteStatus.Cancelled) => null,
+            (PurchaseCreditNoteStatus.Submitted, PurchaseCreditNoteStatus.Cancelled) => null,
+            _ => "Only draft purchase credit notes can be submitted, and only draft or submitted purchase credit notes can be cancelled."
         };
     }
 

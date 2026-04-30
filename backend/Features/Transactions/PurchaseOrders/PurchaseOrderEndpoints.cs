@@ -18,8 +18,7 @@ public static class PurchaseOrderEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateStatusAsync);
 
         return app;
     }
@@ -38,10 +37,24 @@ public static class PurchaseOrderEndpoints
                 .ThenInclude(item => item.Ledger);
     }
 
-    private static async Task<IResult> GetAllAsync(AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> GetAllAsync(
+        string? keyword,
+        int? limit,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var purchaseOrders = await dbContext.PurchaseOrders
-            .AsNoTracking()
+        var query = dbContext.PurchaseOrders.AsNoTracking();
+        var normalizedKeyword = keyword?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedKeyword))
+        {
+            var pattern = $"%{normalizedKeyword}%";
+            query = query.Where(current =>
+                EF.Functions.ILike(current.OrderDetails.No, pattern) ||
+                EF.Functions.ILike(current.VendorInformation.VendorNameSnapshot, pattern));
+        }
+
+        var normalizedLimit = limit is > 0 ? Math.Min(limit.Value, 100) : 0;
+        var sortedQuery = query
             .OrderByDescending(current => current.UpdatedAtUtc)
             .Select(current => new PurchaseOrderListItemDto(
                 current.Id,
@@ -51,8 +64,11 @@ public static class PurchaseOrderEndpoints
                 current.Footer.NetTotal,
                 current.Status,
                 current.CreatedAtUtc,
-                current.UpdatedAtUtc))
-            .ToListAsync(cancellationToken);
+                current.UpdatedAtUtc));
+
+        var purchaseOrders = normalizedLimit > 0
+            ? await sortedQuery.Take(normalizedLimit).ToListAsync(cancellationToken)
+            : await sortedQuery.ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new ApiResponse<IReadOnlyList<PurchaseOrderListItemDto>>(true, "Purchase order list fetched successfully.", purchaseOrders));
     }
@@ -108,66 +124,43 @@ public static class PurchaseOrderEndpoints
         return TypedResults.Created($"/api/transactions/purchase-orders/{purchaseOrder.Id}", new ApiResponse<PurchaseOrderDto>(true, "Purchase order created successfully.", PurchaseOrderDto.FromEntity(created)));
     }
 
-    private static async Task<IResult> UpdateAsync(Guid id, UpdatePurchaseOrderRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateStatusAsync(
+        Guid id,
+        UpdatePurchaseOrderStatusRequest request,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var buildResult = BuildPurchaseOrderRequest(request.OrderDetails, request.VendorInformation, request.FinancialDetails, request.DeliveryInformation, request.ProductInformation, request.Items, request.Additions, request.Footer);
-        if (buildResult.Error is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
-        }
-
         var purchaseOrder = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (purchaseOrder is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase order not found.", null));
         }
 
-        if (await dbContext.PurchaseOrders.AnyAsync(current => current.Id != id && current.OrderDetails.No == buildResult.OrderDetails.No, cancellationToken))
+        var nextStatus = string.IsNullOrWhiteSpace(request.Status)
+            ? purchaseOrder.Status
+            : NormalizeStatus(request.Status);
+        if (purchaseOrder.Status == nextStatus)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Purchase order number already exists.", null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<PurchaseOrderDto>(
+                true,
+                "Purchase order updated successfully.",
+                PurchaseOrderDto.FromEntity(unchanged)));
         }
 
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, cancellationToken);
-        if (resolutionError is not null)
+        var transitionError = ValidateStatusTransition(purchaseOrder.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        purchaseOrder.OrderDetails = buildResult.OrderDetails;
-        purchaseOrder.VendorInformation = buildResult.VendorInformation;
-        purchaseOrder.FinancialDetails = buildResult.FinancialDetails;
-        purchaseOrder.DeliveryInformation = buildResult.DeliveryInformation;
-        purchaseOrder.ProductInformation = buildResult.ProductInformation;
-        purchaseOrder.Footer = buildResult.Footer;
-        purchaseOrder.Status = string.IsNullOrWhiteSpace(request.Status) ? purchaseOrder.Status : NormalizeStatus(request.Status);
+        purchaseOrder.Status = nextStatus;
         purchaseOrder.UpdatedAtUtc = DateTime.UtcNow;
-
-        dbContext.RemoveRange(purchaseOrder.Items);
-        purchaseOrder.Items = buildResult.Items;
-        dbContext.RemoveRange(purchaseOrder.Additions);
-        purchaseOrder.Additions = buildResult.Additions;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
         return TypedResults.Ok(new ApiResponse<PurchaseOrderDto>(true, "Purchase order updated successfully.", PurchaseOrderDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var purchaseOrder = await dbContext.PurchaseOrders
-            .Include(current => current.Items)
-            .Include(current => current.Additions)
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (purchaseOrder is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase order not found.", null));
-        }
-
-        dbContext.PurchaseOrders.Remove(purchaseOrder);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Purchase order deleted successfully.", null));
     }
 
     private static PurchaseOrderBuildResult BuildPurchaseOrderRequest(
@@ -502,6 +495,22 @@ public static class PurchaseOrderEndpoints
         var requested = status.Trim();
         return PurchaseOrderStatuses.All.FirstOrDefault(value => value.Equals(requested, StringComparison.OrdinalIgnoreCase))
             ?? PurchaseOrderStatuses.Draft;
+    }
+
+    private static string? ValidateStatusTransition(string currentStatus, string nextStatus)
+    {
+        if (string.Equals(currentStatus, PurchaseOrderStatuses.Cancelled, StringComparison.Ordinal))
+        {
+            return "Cancelled purchase orders cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (PurchaseOrderStatuses.Draft, PurchaseOrderStatuses.Submitted) => null,
+            (PurchaseOrderStatuses.Draft, PurchaseOrderStatuses.Cancelled) => null,
+            (PurchaseOrderStatuses.Submitted, PurchaseOrderStatuses.Cancelled) => null,
+            _ => "Only draft purchase orders can be submitted, and only draft or submitted purchase orders can be cancelled."
+        };
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

@@ -43,6 +43,7 @@ public static class VendorEndpoints
     {
         var vendor = await dbContext.Vendors
             .Include(current => current.Ledger)
+                .ThenInclude(current => current!.LedgerGroup)
             .Include(current => current.OpeningBalance)
             .Include(current => current.CreditAndFinance.Currency)
             .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
@@ -79,20 +80,43 @@ public static class VendorEndpoints
             return TypedResults.Conflict(new ApiResponse<object>(false, "Vendor with this code or name already exists.", null));
         }
 
-        var (ledger, referenceError) = await PopulateVendorReferencesAsync(request.LedgerId, buildResult.CreditAndFinance, dbContext, cancellationToken);
+        var (ledgerGroup, currency, referenceError) = await PopulateVendorReferencesAsync(request.LedgerGroupId, buildResult.CreditAndFinance, dbContext, cancellationToken);
         if (referenceError is not null)
         {
             return TypedResults.BadRequest(new ApiResponse<object>(false, referenceError, null));
         }
 
         var now = DateTime.UtcNow;
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var ledger = new Ledger
+        {
+            Code = buildResult.BasicInfo.Code,
+            Name = buildResult.BasicInfo.Name,
+            LedgerGroupId = ledgerGroup!.Id,
+            LedgerGroup = ledgerGroup,
+            DefaultCurrencyId = currency?.Id,
+            DefaultCurrency = currency,
+            Status = LedgerStatuses.Active,
+            AllowManualPosting = true,
+            IsBillWise = true,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        };
+
+        var ledgerConflict = await HasLedgerConflictAsync(ledger.Code, ledger.Name, null, dbContext, cancellationToken);
+        if (ledgerConflict)
+        {
+            return TypedResults.Conflict(new ApiResponse<object>(false, "A ledger with this vendor code or name already exists.", null));
+        }
+
         var vendor = new Vendor
         {
             BasicInfo = buildResult.BasicInfo,
             AddressAndContact = buildResult.AddressAndContact,
             CreditAndFinance = buildResult.CreditAndFinance,
             TaxAndCompliance = NormalizeTaxAndCompliance(request.TaxAndCompliance),
-            LedgerId = ledger?.Id,
+            LedgerId = ledger.Id,
             Ledger = ledger,
             BankDetails = NormalizeBankDetails(request.BankDetails),
             Other = NormalizeOther(request.Other),
@@ -114,8 +138,10 @@ public static class VendorEndpoints
             };
         }
 
+        dbContext.Ledgers.Add(ledger);
         dbContext.Vendors.Add(vendor);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return TypedResults.Created($"/api/masters/vendors/{vendor.Id}", new ApiResponse<VendorDto>(
             true,
@@ -143,6 +169,7 @@ public static class VendorEndpoints
 
         var vendor = await dbContext.Vendors
             .Include(current => current.Ledger)
+                .ThenInclude(current => current!.LedgerGroup)
             .Include(current => current.OpeningBalance)
             .Include(current => current.CreditAndFinance.Currency)
             .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
@@ -159,18 +186,89 @@ public static class VendorEndpoints
             return TypedResults.Conflict(new ApiResponse<object>(false, "Vendor with this code or name already exists.", null));
         }
 
-        var (ledger, referenceError) = await PopulateVendorReferencesAsync(request.LedgerId, buildResult.CreditAndFinance, dbContext, cancellationToken);
+        var (ledgerGroup, currency, referenceError) = await PopulateVendorReferencesAsync(request.LedgerGroupId, buildResult.CreditAndFinance, dbContext, cancellationToken);
         if (referenceError is not null)
         {
             return TypedResults.BadRequest(new ApiResponse<object>(false, referenceError, null));
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var currentLedger = vendor.Ledger;
+        var requestedLedgerGroupId = ledgerGroup!.Id;
+        var ledgerGroupChanged = currentLedger is not null && currentLedger.LedgerGroupId != requestedLedgerGroupId;
+
+        if (ledgerGroupChanged)
+        {
+            var hasLedgerTransactions = await dbContext.JournalEntries.AnyAsync(
+                current => current.LedgerId == currentLedger!.Id,
+                cancellationToken);
+
+            if (hasLedgerTransactions)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(
+                    false,
+                    "Ledger group cannot be changed after transactions exist for this vendor ledger.",
+                    null));
+            }
+        }
+
+        var effectiveLedgerId = currentLedger?.Id;
+        var ledgerConflict = await HasLedgerConflictAsync(
+            buildResult.BasicInfo.Code,
+            buildResult.BasicInfo.Name,
+            effectiveLedgerId,
+            dbContext,
+            cancellationToken);
+
+        if (ledgerConflict)
+        {
+            return TypedResults.Conflict(new ApiResponse<object>(false, "A ledger with this vendor code or name already exists.", null));
+        }
+
+        var ledgerNow = DateTime.UtcNow;
+        if (currentLedger is null)
+        {
+            currentLedger = new Ledger
+            {
+                Code = buildResult.BasicInfo.Code,
+                Name = buildResult.BasicInfo.Name,
+                LedgerGroupId = requestedLedgerGroupId,
+                LedgerGroup = ledgerGroup,
+                DefaultCurrencyId = currency?.Id,
+                DefaultCurrency = currency,
+                Status = LedgerStatuses.Active,
+                AllowManualPosting = true,
+                IsBillWise = true,
+                CreatedAtUtc = ledgerNow,
+                UpdatedAtUtc = ledgerNow
+            };
+
+            dbContext.Ledgers.Add(currentLedger);
+            vendor.LedgerId = currentLedger.Id;
+            vendor.Ledger = currentLedger;
+        }
+        else
+        {
+            currentLedger.Code = buildResult.BasicInfo.Code;
+            currentLedger.Name = buildResult.BasicInfo.Name;
+            currentLedger.LedgerGroupId = requestedLedgerGroupId;
+            currentLedger.LedgerGroup = ledgerGroup;
+            currentLedger.DefaultCurrencyId = currency?.Id;
+            currentLedger.DefaultCurrency = currency;
+            currentLedger.Status = LedgerStatuses.Active;
+            currentLedger.AllowManualPosting = true;
+            currentLedger.IsBillWise = true;
+            currentLedger.UpdatedAtUtc = ledgerNow;
+
+            vendor.LedgerId = currentLedger.Id;
+            vendor.Ledger = currentLedger;
         }
 
         vendor.BasicInfo = buildResult.BasicInfo;
         vendor.AddressAndContact = buildResult.AddressAndContact;
         vendor.CreditAndFinance = buildResult.CreditAndFinance;
         vendor.TaxAndCompliance = NormalizeTaxAndCompliance(request.TaxAndCompliance);
-        vendor.LedgerId = ledger?.Id;
-        vendor.Ledger = ledger;
         vendor.BankDetails = NormalizeBankDetails(request.BankDetails);
         vendor.Other = NormalizeOther(request.Other);
         vendor.Status = buildResult.Status;
@@ -206,6 +304,7 @@ public static class VendorEndpoints
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return TypedResults.Ok(new ApiResponse<VendorDto>(
             true,
@@ -375,31 +474,41 @@ public static class VendorEndpoints
             openingBalance);
     }
 
-    private static async Task<(Ledger? Ledger, string? Error)> PopulateVendorReferencesAsync(
-        Guid? ledgerId,
+    private static async Task<(LedgerGroup? LedgerGroup, Currency? Currency, string? Error)> PopulateVendorReferencesAsync(
+        Guid ledgerGroupId,
         VendorCreditAndFinance creditAndFinance,
         AppDbContext dbContext,
         CancellationToken cancellationToken)
     {
-        var ledger = await ResolveLedgerAsync(ledgerId, dbContext, cancellationToken);
-        if (ledgerId is not null && ledger is null)
+        if (ledgerGroupId == Guid.Empty)
         {
-            return (null, "Selected ledger does not exist.");
+            return (null, null, "Ledger group is required.");
         }
 
-        if (ledger is not null && ledger.Status != LedgerStatuses.Active)
+        var ledgerGroup = await ResolveLedgerGroupAsync(ledgerGroupId, dbContext, cancellationToken);
+        if (ledgerGroup is null)
         {
-            return (null, "Selected ledger must be active.");
+            return (null, null, "Selected ledger group does not exist.");
+        }
+
+        if (ledgerGroup.Status != LedgerGroupStatuses.Active)
+        {
+            return (null, null, "Selected ledger group must be active.");
+        }
+
+        if (!string.Equals(ledgerGroup.Nature, LedgerGroupNatures.Liability, StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, null, "Selected ledger group must be liability compatible for vendors.");
         }
 
         var currency = await ResolveCurrencyAsync(creditAndFinance.CurrencyId, dbContext, cancellationToken);
         if (creditAndFinance.CurrencyId is not null && currency is null)
         {
-            return (null, "Selected currency does not exist.");
+            return (null, null, "Selected currency does not exist.");
         }
 
         creditAndFinance.Currency = currency;
-        return (ledger, null);
+        return (ledgerGroup, currency, null);
     }
 
     private sealed record VendorRequestBuildResult(
@@ -450,17 +559,12 @@ public static class VendorEndpoints
         };
     }
 
-    private static async Task<Ledger?> ResolveLedgerAsync(
-        Guid? ledgerId,
+    private static async Task<LedgerGroup?> ResolveLedgerGroupAsync(
+        Guid ledgerGroupId,
         AppDbContext dbContext,
         CancellationToken cancellationToken)
     {
-        if (ledgerId is null)
-        {
-            return null;
-        }
-
-        return await dbContext.Ledgers.FirstOrDefaultAsync(current => current.Id == ledgerId.Value, cancellationToken);
+        return await dbContext.LedgerGroups.FirstOrDefaultAsync(current => current.Id == ledgerGroupId, cancellationToken);
     }
 
     private static async Task<Currency?> ResolveCurrencyAsync(
@@ -479,5 +583,19 @@ public static class VendorEndpoints
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static async Task<bool> HasLedgerConflictAsync(
+        string code,
+        string name,
+        Guid? excludeLedgerId,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.Ledgers.AnyAsync(
+            current =>
+                current.Id != excludeLedgerId &&
+                (current.Code == code || current.Name == name),
+            cancellationToken);
     }
 }

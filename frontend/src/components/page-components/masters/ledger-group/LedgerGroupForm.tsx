@@ -7,6 +7,7 @@ import {
   useGetLedgerGroupsQuery,
   useUpdateLedgerGroupMutation,
 } from "../../../../app/api/ledgerGroupApi";
+import AutocompleteSelect from "../../../form/AutocompleteSelect";
 import Label from "../../../form/Label";
 import Input from "../../../form/input/InputField";
 import Button from "../../../ui/button/Button";
@@ -45,6 +46,11 @@ export default function LedgerGroupForm({ ledgerGroup, onClose }: LedgerGroupFor
       ),
     [ledgerGroups, ledgerGroup?.id, nature]
   );
+
+  const selectedParentLabel = useMemo(() => {
+    const selectedParent = availableParents.find((item) => item.id === parentGroupId);
+    return selectedParent ? `${selectedParent.code} - ${selectedParent.name}` : "";
+  }, [availableParents, parentGroupId]);
 
   const isLoading = isCreating || isUpdating;
 
@@ -154,18 +160,35 @@ export default function LedgerGroupForm({ ledgerGroup, onClose }: LedgerGroupFor
 
       <div>
         <Label>Parent Group</Label>
-        <select
-          value={parentGroupId}
-          onChange={(event) => setParentGroupId(event.target.value)}
-          className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-        >
-          <option value="">Select a parent ledger group</option>
-          {availableParents.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
+        <AutocompleteSelect<LedgerGroup, LedgerGroup[]>
+          value={selectedParentLabel}
+          placeholder="Search parent ledger group"
+          search={(keyword) => {
+            const normalizedKeyword = keyword.trim().toLowerCase();
+
+            return availableParents
+              .filter((item) => {
+                if (!normalizedKeyword) {
+                  return true;
+                }
+
+                return (
+                  item.code.toLowerCase().includes(normalizedKeyword) ||
+                  item.name.toLowerCase().includes(normalizedKeyword)
+                );
+              })
+              .slice(0, 10);
+          }}
+          getItems={(result) => result}
+          getOptionKey={(item) => item.id}
+          getOptionLabel={(item) => `${item.code} - ${item.name}`}
+          onInputChange={(value) => {
+            if (!value.trim()) {
+              setParentGroupId("");
+            }
+          }}
+          onSelect={(item) => setParentGroupId(item?.id ?? "")}
+        />
       </div>
 
       {formError ? <p className="text-sm text-error-500">{formError}</p> : null}

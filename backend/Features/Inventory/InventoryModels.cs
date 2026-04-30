@@ -7,6 +7,7 @@ public static class StockMovementTypes
 {
     public const string Receipt = "Receipt";
     public const string Issue = "Issue";
+    public const string Revaluation = "Revaluation";
     public const string AdjustmentIn = "AdjustmentIn";
     public const string AdjustmentOut = "AdjustmentOut";
     public const string TransferIn = "TransferIn";
@@ -16,6 +17,7 @@ public static class StockMovementTypes
     [
         Receipt,
         Issue,
+        Revaluation,
         AdjustmentIn,
         AdjustmentOut,
         TransferIn,
@@ -68,6 +70,7 @@ public sealed class StockLedgerEntry
     public string MovementType { get; set; } = StockMovementTypes.Receipt;
     public string SourceType { get; set; } = StockSourceTypes.GoodsReceiptNote;
     public Guid SourceId { get; set; }
+    public Guid? SourceLineId { get; set; }
 
     public DateTime PostingDateUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
@@ -107,6 +110,7 @@ public sealed class FifoLayer
 
     public string SourceType { get; set; } = StockSourceTypes.GoodsReceiptNote;
     public Guid SourceId { get; set; }
+    public Guid? SourceLineId { get; set; }
 
     public decimal OriginalQuantity { get; set; }
     public decimal RemainingQuantity { get; set; }
@@ -116,4 +120,39 @@ public sealed class FifoLayer
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public bool IsDepleted => RemainingQuantity <= 0;
+}
+
+public sealed class InventoryLayerConsumption
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid IssueStockLedgerEntryId { get; set; }
+    public StockLedgerEntry? IssueStockLedgerEntry { get; set; }
+
+    public Guid FifoLayerId { get; set; }
+    public FifoLayer? FifoLayer { get; set; }
+
+    public decimal Quantity { get; set; }
+    public decimal Rate { get; set; }
+    public decimal Value { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class InventoryLayerRevaluation
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid StockLedgerEntryId { get; set; }
+    public StockLedgerEntry? StockLedgerEntry { get; set; }
+
+    public Guid FifoLayerId { get; set; }
+    public FifoLayer? FifoLayer { get; set; }
+
+    public decimal QuantityAtRevaluation { get; set; }
+    public decimal PreviousRate { get; set; }
+    public decimal NewRate { get; set; }
+    public decimal ValueDelta { get; set; }
+
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

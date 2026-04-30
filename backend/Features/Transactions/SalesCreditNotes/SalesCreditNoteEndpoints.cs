@@ -21,8 +21,7 @@ public static class SalesCreditNoteEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateStatusAsync);
 
         return app;
     }
@@ -120,76 +119,55 @@ public static class SalesCreditNoteEndpoints
         return TypedResults.Created($"/api/transactions/sales-credit-notes/{salesCreditNote.Id}", new ApiResponse<SalesCreditNoteDto>(true, "Sales credit note created successfully.", SalesCreditNoteDto.FromEntity(created)));
     }
 
-    private static async Task<IResult> UpdateAsync(Guid id, UpdateSalesCreditNoteRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateStatusAsync(
+        Guid id,
+        UpdateSalesCreditNoteStatusRequest request,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var buildResult = BuildSalesCreditNoteRequest(request.NoteNature, request.SourceRef, request.Document, request.CustomerInformation, request.FinancialDetails, request.General, request.Items, request.Additions, request.Footer);
-        if (buildResult.Error is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
-        }
-
         var salesCreditNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (salesCreditNote is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Sales credit note not found.", null));
         }
 
-        if (await dbContext.SalesCreditNotes.AnyAsync(current => current.Id != id && current.Document.No == buildResult.Document.No, cancellationToken))
+        var nextStatus = string.IsNullOrWhiteSpace(request.Status)
+            ? salesCreditNote.Status
+            : ParseStatus(request.Status);
+        if (salesCreditNote.Status == nextStatus)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Sales credit note number already exists.", null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<SalesCreditNoteDto>(
+                true,
+                "Sales credit note updated successfully.",
+                SalesCreditNoteDto.FromEntity(unchanged)));
         }
 
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, id, cancellationToken);
-        if (resolutionError is not null)
+        var transitionError = ValidateStatusTransition(salesCreditNote.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        await AdjustmentInventoryPosting.RevertAsync(dbContext, StockSourceTypes.SalesCreditNote, id, cancellationToken);
+        if (nextStatus == SalesCreditNoteStatus.Cancelled && salesCreditNote.AffectsInventory)
+        {
+            await AdjustmentInventoryPosting.RevertAsync(
+                dbContext,
+                StockSourceTypes.SalesCreditNote,
+                id,
+                cancellationToken);
+        }
 
-        salesCreditNote.NoteNature = buildResult.NoteNature;
-        salesCreditNote.SourceRef = buildResult.SourceRef;
-        salesCreditNote.Document = buildResult.Document;
-        salesCreditNote.CustomerInformation = buildResult.CustomerInformation;
-        salesCreditNote.FinancialDetails = buildResult.FinancialDetails;
-        salesCreditNote.General = buildResult.General;
-        salesCreditNote.Footer = buildResult.Footer;
-        salesCreditNote.Status = string.IsNullOrWhiteSpace(request.Status) ? salesCreditNote.Status : ParseStatus(request.Status);
+        salesCreditNote.Status = nextStatus;
         salesCreditNote.UpdatedAtUtc = DateTime.UtcNow;
-
-        dbContext.RemoveRange(salesCreditNote.Items);
-        salesCreditNote.Items = buildResult.Items;
-        dbContext.RemoveRange(salesCreditNote.Additions);
-        salesCreditNote.Additions = buildResult.Additions;
-
-        var inventoryError = await PostInventoryIfNeededAsync(dbContext, salesCreditNote, cancellationToken);
-        if (inventoryError is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, inventoryError, null));
-        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
-        return TypedResults.Ok(new ApiResponse<SalesCreditNoteDto>(true, "Sales credit note updated successfully.", SalesCreditNoteDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var salesCreditNote = await dbContext.SalesCreditNotes
-            .Include(current => current.Items)
-            .Include(current => current.Additions)
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (salesCreditNote is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Sales credit note not found.", null));
-        }
-
-        await AdjustmentInventoryPosting.RevertAsync(dbContext, StockSourceTypes.SalesCreditNote, id, cancellationToken);
-        dbContext.SalesCreditNotes.Remove(salesCreditNote);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Sales credit note deleted successfully.", null));
+        return TypedResults.Ok(new ApiResponse<SalesCreditNoteDto>(
+            true,
+            "Sales credit note updated successfully.",
+            SalesCreditNoteDto.FromEntity(updated)));
     }
 
     private static SalesCreditNoteBuildResult BuildSalesCreditNoteRequest(
@@ -629,6 +607,24 @@ public static class SalesCreditNoteEndpoints
             "Submitted" => SalesCreditNoteStatus.Submitted,
             "Cancelled" => SalesCreditNoteStatus.Cancelled,
             _ => SalesCreditNoteStatus.Draft
+        };
+    }
+
+    private static string? ValidateStatusTransition(
+        SalesCreditNoteStatus currentStatus,
+        SalesCreditNoteStatus nextStatus)
+    {
+        if (currentStatus == SalesCreditNoteStatus.Cancelled)
+        {
+            return "Cancelled sales credit notes cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (SalesCreditNoteStatus.Draft, SalesCreditNoteStatus.Submitted) => null,
+            (SalesCreditNoteStatus.Draft, SalesCreditNoteStatus.Cancelled) => null,
+            (SalesCreditNoteStatus.Submitted, SalesCreditNoteStatus.Cancelled) => null,
+            _ => "Only draft sales credit notes can be submitted, and only draft or submitted sales credit notes can be cancelled."
         };
     }
 

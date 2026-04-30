@@ -1,5 +1,6 @@
 using backend.Features.Masters.Currencies;
 using backend.Features.Masters.Customers;
+using backend.Features.Inventory;
 using backend.Features.Masters.Ledgers;
 using backend.Features.Masters.Products;
 using backend.Features.Masters.Uoms;
@@ -19,8 +20,7 @@ public static class SalesInvoiceEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateStatusAsync);
 
         return app;
     }
@@ -38,10 +38,24 @@ public static class SalesInvoiceEndpoints
                 .ThenInclude(item => item.Ledger);
     }
 
-    private static async Task<IResult> GetAllAsync(AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> GetAllAsync(
+        string? keyword,
+        int? limit,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var salesInvoices = await dbContext.SalesInvoices
-            .AsNoTracking()
+        var query = dbContext.SalesInvoices.AsNoTracking();
+        var normalizedKeyword = keyword?.Trim();
+        if (!string.IsNullOrWhiteSpace(normalizedKeyword))
+        {
+            var pattern = $"%{normalizedKeyword}%";
+            query = query.Where(current =>
+                EF.Functions.ILike(current.Document.No, pattern) ||
+                EF.Functions.ILike(current.CustomerInformation.CustomerNameSnapshot, pattern));
+        }
+
+        var normalizedLimit = limit is > 0 ? Math.Min(limit.Value, 100) : 0;
+        var sortedQuery = query
             .OrderByDescending(current => current.UpdatedAtUtc)
             .Select(current => new SalesInvoiceListItemDto(
                 current.Id,
@@ -51,8 +65,11 @@ public static class SalesInvoiceEndpoints
                 current.Footer.NetTotal,
                 ToStatusLabel(current.Status),
                 current.CreatedAtUtc,
-                current.UpdatedAtUtc))
-            .ToListAsync(cancellationToken);
+                current.UpdatedAtUtc));
+
+        var salesInvoices = normalizedLimit > 0
+            ? await sortedQuery.Take(normalizedLimit).ToListAsync(cancellationToken)
+            : await sortedQuery.ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new ApiResponse<IReadOnlyList<SalesInvoiceListItemDto>>(true, "Sales invoice list fetched successfully.", salesInvoices));
     }
@@ -96,91 +113,96 @@ public static class SalesInvoiceEndpoints
             Items = buildResult.Items,
             Additions = buildResult.Additions,
             Footer = buildResult.Footer,
-            Status = SalesInvoiceStatus.Draft,
+            Status = ParseStatus(request.Status),
             CreatedAtUtc = now,
             UpdatedAtUtc = now
         };
 
         dbContext.SalesInvoices.Add(salesInvoice);
+        if (salesInvoice.Status == SalesInvoiceStatus.Submitted)
+        {
+            var stockError = await ApplySubmissionStockEffectsAsync(dbContext, salesInvoice, cancellationToken);
+            if (stockError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, stockError, null));
+            }
+
+            var journalError = await SalesInvoiceJournalPosting.PostAsync(
+                dbContext,
+                salesInvoice,
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var created = await BuildQuery(dbContext).FirstAsync(current => current.Id == salesInvoice.Id, cancellationToken);
         return TypedResults.Created($"/api/transactions/sales-invoices/{salesInvoice.Id}", new ApiResponse<SalesInvoiceDto>(true, "Sales invoice created successfully.", SalesInvoiceDto.FromEntity(created)));
     }
 
-    private static async Task<IResult> UpdateAsync(Guid id, UpdateSalesInvoiceRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateStatusAsync(Guid id, UpdateSalesInvoiceStatusRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
     {
-        var buildResult = BuildSalesInvoiceRequest(request.SourceRef, request.Document, request.CustomerInformation, request.FinancialDetails, request.General, request.Items, request.Additions, request.Footer);
-        if (buildResult.Error is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
-        }
-
         var salesInvoice = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (salesInvoice is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Sales invoice not found.", null));
         }
 
-        if (await dbContext.SalesInvoices.AnyAsync(current => current.Id != id && current.Document.No == buildResult.Document.No, cancellationToken))
+        var nextStatus = ParseStatus(request.Status);
+        if (salesInvoice.Status == nextStatus)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Sales invoice number already exists.", null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<SalesInvoiceDto>(true, "Sales invoice updated successfully.", SalesInvoiceDto.FromEntity(unchanged)));
         }
 
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, cancellationToken);
-        if (resolutionError is not null)
+        var transitionError = ValidateStatusTransition(salesInvoice.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        var externalSettlements = Math.Max(
-            0,
-            Math.Round(
-                salesInvoice.Footer.NetTotal - salesInvoice.Footer.Paid - salesInvoice.FinancialDetails.Balance,
-                2,
-                MidpointRounding.AwayFromZero));
-        buildResult.FinancialDetails.Balance = Math.Max(
-            0,
-            Math.Round(
-                buildResult.Footer.NetTotal - buildResult.Footer.Paid - externalSettlements,
-                2,
-                MidpointRounding.AwayFromZero));
+        if (nextStatus == SalesInvoiceStatus.Submitted)
+        {
+            var stockError = await ApplySubmissionStockEffectsAsync(dbContext, salesInvoice, cancellationToken);
+            if (stockError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, stockError, null));
+            }
 
-        salesInvoice.SourceRef = buildResult.SourceRef;
-        salesInvoice.Document = buildResult.Document;
-        salesInvoice.CustomerInformation = buildResult.CustomerInformation;
-        salesInvoice.FinancialDetails = buildResult.FinancialDetails;
-        salesInvoice.General = buildResult.General;
-        salesInvoice.Footer = buildResult.Footer;
-        salesInvoice.Status = string.IsNullOrWhiteSpace(request.Status) ? salesInvoice.Status : ParseStatus(request.Status);
+            var journalError = await SalesInvoiceJournalPosting.PostAsync(
+                dbContext,
+                salesInvoice,
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
+        }
+        else if (salesInvoice.Status == SalesInvoiceStatus.Submitted && nextStatus == SalesInvoiceStatus.Cancelled)
+        {
+            await InventoryPostingService.RevertSourceAsync(dbContext, StockSourceTypes.SalesInvoice, salesInvoice.Id, cancellationToken);
+
+            var journalError = await SalesInvoiceJournalPosting.ReverseAsync(
+                dbContext,
+                salesInvoice.Id,
+                DateOnly.FromDateTime(DateTime.UtcNow),
+                cancellationToken);
+            if (journalError is not null)
+            {
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+            }
+        }
+
+        salesInvoice.Status = nextStatus;
         salesInvoice.UpdatedAtUtc = DateTime.UtcNow;
-
-        dbContext.RemoveRange(salesInvoice.Items);
-        salesInvoice.Items = buildResult.Items;
-        dbContext.RemoveRange(salesInvoice.Additions);
-        salesInvoice.Additions = buildResult.Additions;
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
         return TypedResults.Ok(new ApiResponse<SalesInvoiceDto>(true, "Sales invoice updated successfully.", SalesInvoiceDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var salesInvoice = await dbContext.SalesInvoices
-            .Include(current => current.Items)
-            .Include(current => current.Additions)
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (salesInvoice is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Sales invoice not found.", null));
-        }
-
-        dbContext.SalesInvoices.Remove(salesInvoice);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Sales invoice deleted successfully.", null));
     }
 
     private static SalesInvoiceBuildResult BuildSalesInvoiceRequest(
@@ -550,9 +572,74 @@ public static class SalesInvoiceEndpoints
 
         return value.Trim() switch
         {
+            "Created" => SalesInvoiceStatus.Submitted,
             "Submitted" => SalesInvoiceStatus.Submitted,
             "Cancelled" => SalesInvoiceStatus.Cancelled,
             _ => SalesInvoiceStatus.Draft
+        };
+    }
+
+    private static async Task<string?> ApplySubmissionStockEffectsAsync(
+        AppDbContext dbContext,
+        SalesInvoice salesInvoice,
+        CancellationToken cancellationToken)
+    {
+        var inventorySettings = await InventorySettingsResolver.GetEffectiveSettingsAsync(dbContext, cancellationToken);
+        var issueLines = salesInvoice.Items
+            .OrderBy(item => item.Sno)
+            .ThenBy(item => item.Id)
+            .Select(item => new InventoryIssuePostingLine(
+                item.Id,
+                item.ProductId,
+                item.WarehouseId ?? Guid.Empty,
+                item.Quantity,
+                item.ProductNameSnapshot))
+            .ToList();
+
+        var issueResult = await InventoryPostingService.ApplyIssuesAsync(
+            dbContext,
+            inventorySettings,
+            StockSourceTypes.SalesInvoice,
+            salesInvoice.Id,
+            salesInvoice.Document.Date,
+            issueLines,
+            cancellationToken);
+        if (issueResult.Error is not null)
+        {
+            return issueResult.Error;
+        }
+
+        foreach (var item in salesInvoice.Items)
+        {
+            if (!issueResult.Costings.TryGetValue(item.Id, out var costing))
+            {
+                continue;
+            }
+
+            item.CostRate = costing.CostRate;
+            item.CogsAmount = costing.TotalCost;
+            item.GrossProfitAmount = Math.Round(
+                Math.Round(item.GrossAmount - item.DiscountAmount, 2, MidpointRounding.AwayFromZero) - costing.TotalCost,
+                2,
+                MidpointRounding.AwayFromZero);
+        }
+
+        return null;
+    }
+
+    private static string? ValidateStatusTransition(SalesInvoiceStatus currentStatus, SalesInvoiceStatus nextStatus)
+    {
+        if (currentStatus == SalesInvoiceStatus.Cancelled)
+        {
+            return "Cancelled sales invoices cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (SalesInvoiceStatus.Draft, SalesInvoiceStatus.Submitted) => null,
+            (SalesInvoiceStatus.Draft, SalesInvoiceStatus.Cancelled) => null,
+            (SalesInvoiceStatus.Submitted, SalesInvoiceStatus.Cancelled) => null,
+            _ => "Only draft sales invoices can be submitted, and only submitted sales invoices can be cancelled."
         };
     }
 

@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { ApiResponse } from "../../types/filtering";
+import { buildQueryParams } from "./queryUtils";
 
 export interface SalesOrderOrderDetails {
   voucherType: "SL" | "PH";
@@ -169,6 +170,11 @@ export interface SalesOrderPayload {
   };
 }
 
+export interface SalesOrderListQueryParams {
+  keyword?: string;
+  limit?: number;
+}
+
 export const salesOrderApi = createApi({
   reducerPath: "salesOrderApi",
   baseQuery: fetchBaseQuery({
@@ -177,8 +183,11 @@ export const salesOrderApi = createApi({
   }),
   tagTypes: ["SalesOrder"],
   endpoints: (builder) => ({
-    getSalesOrders: builder.query<SalesOrderListItem[], void>({
-      query: () => "/",
+    getSalesOrders: builder.query<SalesOrderListItem[], SalesOrderListQueryParams | void>({
+      query: (params) => ({
+        url: "/",
+        params: buildQueryParams(params ?? undefined),
+      }),
       transformResponse: (response: ApiResponse<SalesOrderListItem[]>) => response.data,
       providesTags: ["SalesOrder"],
     }),
@@ -217,6 +226,7 @@ export const salesOrderApi = createApi({
 
 export const {
   useGetSalesOrdersQuery,
+  useLazyGetSalesOrdersQuery,
   useGetSalesOrderByIdQuery,
   useLazyGetSalesOrderByIdQuery,
   useCreateSalesOrderMutation,

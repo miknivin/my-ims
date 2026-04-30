@@ -21,8 +21,7 @@ public static class PurchaseDebitNoteEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:guid}", GetByIdAsync);
         group.MapPost("/", CreateAsync);
-        group.MapPut("/{id:guid}", UpdateAsync);
-        group.MapDelete("/{id:guid}", DeleteAsync);
+        group.MapPatch("/{id:guid}", UpdateStatusAsync);
 
         return app;
     }
@@ -121,77 +120,55 @@ public static class PurchaseDebitNoteEndpoints
         return TypedResults.Created($"/api/transactions/purchase-debit-notes/{purchaseDebitNote.Id}", new ApiResponse<PurchaseDebitNoteDto>(true, "Purchase debit note created successfully.", PurchaseDebitNoteDto.FromEntity(created)));
     }
 
-    private static async Task<IResult> UpdateAsync(Guid id, UpdatePurchaseDebitNoteRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    private static async Task<IResult> UpdateStatusAsync(
+        Guid id,
+        UpdatePurchaseDebitNoteStatusRequest request,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        var buildResult = BuildPurchaseDebitNoteRequest(request.NoteNature, request.SourceRef, request.Document, request.VendorInformation, request.FinancialDetails, request.ProductInformation, request.General, request.Items, request.Additions, request.Footer);
-        if (buildResult.Error is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
-        }
-
         var purchaseDebitNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (purchaseDebitNote is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase debit note not found.", null));
         }
 
-        if (await dbContext.PurchaseDebitNotes.AnyAsync(current => current.Id != id && current.Document.No == buildResult.Document.No, cancellationToken))
+        var nextStatus = string.IsNullOrWhiteSpace(request.Status)
+            ? purchaseDebitNote.Status
+            : ParseStatus(request.Status);
+        if (purchaseDebitNote.Status == nextStatus)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "Purchase debit note number already exists.", null));
+            var unchanged = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<PurchaseDebitNoteDto>(
+                true,
+                "Purchase debit note updated successfully.",
+                PurchaseDebitNoteDto.FromEntity(unchanged)));
         }
 
-        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, id, cancellationToken);
-        if (resolutionError is not null)
+        var transitionError = ValidateStatusTransition(purchaseDebitNote.Status, nextStatus);
+        if (transitionError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
         }
 
-        await AdjustmentInventoryPosting.RevertAsync(dbContext, StockSourceTypes.PurchaseDebitNote, id, cancellationToken);
+        if (nextStatus == PurchaseDebitNoteStatus.Cancelled && purchaseDebitNote.AffectsInventory)
+        {
+            await AdjustmentInventoryPosting.RevertAsync(
+                dbContext,
+                StockSourceTypes.PurchaseDebitNote,
+                id,
+                cancellationToken);
+        }
 
-        purchaseDebitNote.NoteNature = buildResult.NoteNature;
-        purchaseDebitNote.SourceRef = buildResult.SourceRef;
-        purchaseDebitNote.Document = buildResult.Document;
-        purchaseDebitNote.VendorInformation = buildResult.VendorInformation;
-        purchaseDebitNote.FinancialDetails = buildResult.FinancialDetails;
-        purchaseDebitNote.ProductInformation = buildResult.ProductInformation;
-        purchaseDebitNote.General = buildResult.General;
-        purchaseDebitNote.Footer = buildResult.Footer;
-        purchaseDebitNote.Status = string.IsNullOrWhiteSpace(request.Status) ? purchaseDebitNote.Status : ParseStatus(request.Status);
+        purchaseDebitNote.Status = nextStatus;
         purchaseDebitNote.UpdatedAtUtc = DateTime.UtcNow;
-
-        dbContext.RemoveRange(purchaseDebitNote.Items);
-        purchaseDebitNote.Items = buildResult.Items;
-        dbContext.RemoveRange(purchaseDebitNote.Additions);
-        purchaseDebitNote.Additions = buildResult.Additions;
-
-        var inventoryError = await PostInventoryIfNeededAsync(dbContext, purchaseDebitNote, cancellationToken);
-        if (inventoryError is not null)
-        {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, inventoryError, null));
-        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
-        return TypedResults.Ok(new ApiResponse<PurchaseDebitNoteDto>(true, "Purchase debit note updated successfully.", PurchaseDebitNoteDto.FromEntity(updated)));
-    }
-
-    private static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
-    {
-        var purchaseDebitNote = await dbContext.PurchaseDebitNotes
-            .Include(current => current.Items)
-            .Include(current => current.Additions)
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
-        if (purchaseDebitNote is null)
-        {
-            return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase debit note not found.", null));
-        }
-
-        await AdjustmentInventoryPosting.RevertAsync(dbContext, StockSourceTypes.PurchaseDebitNote, id, cancellationToken);
-        dbContext.PurchaseDebitNotes.Remove(purchaseDebitNote);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return TypedResults.Ok(new ApiResponse<object>(true, "Purchase debit note deleted successfully.", null));
+        return TypedResults.Ok(new ApiResponse<PurchaseDebitNoteDto>(
+            true,
+            "Purchase debit note updated successfully.",
+            PurchaseDebitNoteDto.FromEntity(updated)));
     }
 
     private static PurchaseDebitNoteBuildResult BuildPurchaseDebitNoteRequest(
@@ -681,6 +658,24 @@ public static class PurchaseDebitNoteEndpoints
             "Submitted" => PurchaseDebitNoteStatus.Submitted,
             "Cancelled" => PurchaseDebitNoteStatus.Cancelled,
             _ => PurchaseDebitNoteStatus.Draft
+        };
+    }
+
+    private static string? ValidateStatusTransition(
+        PurchaseDebitNoteStatus currentStatus,
+        PurchaseDebitNoteStatus nextStatus)
+    {
+        if (currentStatus == PurchaseDebitNoteStatus.Cancelled)
+        {
+            return "Cancelled purchase debit notes cannot be changed.";
+        }
+
+        return (currentStatus, nextStatus) switch
+        {
+            (PurchaseDebitNoteStatus.Draft, PurchaseDebitNoteStatus.Submitted) => null,
+            (PurchaseDebitNoteStatus.Draft, PurchaseDebitNoteStatus.Cancelled) => null,
+            (PurchaseDebitNoteStatus.Submitted, PurchaseDebitNoteStatus.Cancelled) => null,
+            _ => "Only draft purchase debit notes can be submitted, and only draft or submitted purchase debit notes can be cancelled."
         };
     }
 
