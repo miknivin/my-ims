@@ -4,10 +4,10 @@ import "./index.css";
 import "swiper/swiper-bundle.css";
 import "flatpickr/dist/flatpickr.css";
 import App from "./App.tsx";
-import { AppWrapper } from "./components/common/PageMeta.tsx";
-import { ThemeProvider } from "./context/ThemeContext.tsx";
+import { AppWrapper } from "@/shared/components/common/PageMeta.tsx";
+import { ThemeProvider } from "@/shared/providers/ThemeContext.tsx";
 import { Provider } from "react-redux";
-import { store } from "./app/store.ts";
+import { store } from "@/redux/store.ts";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

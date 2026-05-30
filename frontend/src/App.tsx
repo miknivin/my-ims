@@ -1,8 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router";
-import NotFound from "./pages/OtherPage/NotFound";
-import AppLayout from "./layout/AppLayout";
-import { ScrollToTop } from "./components/common/ScrollToTop";
-import { ProtectedRoute, PublicOnlyRoute } from "./components/auth/AuthRoutes";
+import NotFound from "@/shared/pages/OtherPage/NotFound";
+import AppLayout from "@/shared/layout/AppLayout";
+import { ScrollToTop } from "@/shared/components/common/ScrollToTop";
+import { ProtectedRoute, PublicOnlyRoute } from "@/features/auth/components/auth/AuthRoutes";
 import { appPageRoutes } from "./routes/AppPageRoutes";
 import { authPageRoutes } from "./routes/AuthPageRoutes";
 import { mastersRoutes } from "./routes/MastersRoutes";

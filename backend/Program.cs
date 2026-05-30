@@ -1,6 +1,8 @@
 using System.Text;
 using backend.Features.Auth;
+using backend.Features.Accounting.Journals;
 using backend.Features.Reports.LedgerWise;
+using backend.Features.Reports.SalesPurchase.SalesRegister;
 using backend.Features.Lookups;
 using backend.Features.Inventory.GoodsReceiptNotes;
 using backend.Features.Masters.Categories;
@@ -128,7 +130,10 @@ app.UseAntiforgery();
 app.MapGet("/", () => Results.Ok(new { message = "IMS backend is running." }));
 app.MapAuthEndpoints();
 app.MapLookupEndpoints();
+app.MapJournalEntryEndpoints();
+app.MapJournalVoucherEndpoints();
 app.MapLedgerWiseReportEndpoints();
+app.MapSalesRegisterReportEndpoints();
 app.MapCategoryEndpoints();
 app.MapCustomerEndpoints();
 app.MapCurrencyEndpoints();
@@ -188,4 +193,3 @@ static void LoadDotEnv(string contentRootPath)
         Environment.SetEnvironmentVariable(key, value);
     }
 }
-

@@ -1,6 +1,6 @@
 import { Route } from "react-router";
-import SignIn from "../pages/AuthPages/SignIn";
-import SignUp from "../pages/AuthPages/SignUp";
+import SignIn from "@/features/auth/pages/AuthPages/SignIn";
+import SignUp from "@/features/auth/pages/AuthPages/SignUp";
 
 export const authPageRoutes = (
   <>

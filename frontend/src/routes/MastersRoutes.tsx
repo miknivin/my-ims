@@ -1,20 +1,20 @@
 import { Route } from "react-router";
-import CategoryMaster from "../pages/Masters/CategoryMaster";
-import CustomerFormPage from "../pages/Masters/CustomerFormPage";
-import CustomerMaster from "../pages/Masters/CustomerMaster";
-import CurrencyMaster from "../pages/Masters/CurrencyMaster";
-import DiscountMaster from "../pages/Masters/DiscountMaster";
-import LedgerGroupMaster from "../pages/Masters/LedgerGroupMaster";
-import LedgerMaster from "../pages/Masters/LedgerMaster";
-import Masters from "../pages/Masters/Masters";
-import MastersPlaceholder from "../pages/Masters/MastersPlaceholder";
-import ProductFormPage from "../pages/Masters/ProductFormPage";
-import ProductMaster from "../pages/Masters/ProductMaster";
-import TaxMaster from "../pages/Masters/TaxMaster";
-import UomMaster from "../pages/Masters/UomMaster";
-import VendorMaster from "../pages/Masters/VendorMaster";
-import VendorFormPage from "../pages/Masters/VendorFormPage";
-import WarehouseMaster from "../pages/Masters/WarehouseMaster";
+import CategoryMaster from "@/features/masters/pages/Masters/CategoryMaster";
+import CustomerFormPage from "@/features/masters/pages/Masters/CustomerFormPage";
+import CustomerMaster from "@/features/masters/pages/Masters/CustomerMaster";
+import CurrencyMaster from "@/features/masters/pages/Masters/CurrencyMaster";
+import DiscountMaster from "@/features/masters/pages/Masters/DiscountMaster";
+import LedgerGroupMaster from "@/features/masters/pages/Masters/LedgerGroupMaster";
+import LedgerMaster from "@/features/masters/pages/Masters/LedgerMaster";
+import Masters from "@/features/masters/pages/Masters/Masters";
+import MastersPlaceholder from "@/features/masters/pages/Masters/MastersPlaceholder";
+import ProductFormPage from "@/features/masters/pages/Masters/ProductFormPage";
+import ProductMaster from "@/features/masters/pages/Masters/ProductMaster";
+import TaxMaster from "@/features/masters/pages/Masters/TaxMaster";
+import UomMaster from "@/features/masters/pages/Masters/UomMaster";
+import VendorMaster from "@/features/masters/pages/Masters/VendorMaster";
+import VendorFormPage from "@/features/masters/pages/Masters/VendorFormPage";
+import WarehouseMaster from "@/features/masters/pages/Masters/WarehouseMaster";
 
 export const mastersRoutes = (
   <Route path="/masters">
