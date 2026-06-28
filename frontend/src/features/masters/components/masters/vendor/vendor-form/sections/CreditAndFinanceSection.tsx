@@ -1,4 +1,5 @@
-import { useGetCurrenciesQuery } from "@/redux/api/currencyApi";
+import { Currency, useGetCurrenciesQuery } from "@/redux/api/currencyApi";
+import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import TextArea from "@/shared/components/form/input/TextArea";
@@ -8,6 +9,12 @@ import SectionCard from "../SectionCard";
 export default function CreditAndFinanceSection() {
   const { state, setCreditAndFinance } = useVendorForm();
   const { data: currencies = [] } = useGetCurrenciesQuery();
+  const selectedCurrency = currencies.find(
+    (c) => c.id === state.creditAndFinance.currencyId,
+  );
+  const selectedCurrencyLabel = selectedCurrency
+    ? `${selectedCurrency.code} - ${selectedCurrency.name}`
+    : "";
 
   return (
     <SectionCard title="Credit & Finance">
@@ -16,7 +23,9 @@ export default function CreditAndFinanceSection() {
           <Label>Credit Limit</Label>
           <Input
             value={state.creditAndFinance.creditLimit}
-            onChange={(event) => setCreditAndFinance({ creditLimit: event.target.value })}
+            onChange={(event) =>
+              setCreditAndFinance({ creditLimit: event.target.value })
+            }
             placeholder="50000"
             type="number"
           />
@@ -25,32 +34,34 @@ export default function CreditAndFinanceSection() {
           <Label>Due Days</Label>
           <Input
             value={state.creditAndFinance.dueDays}
-            onChange={(event) => setCreditAndFinance({ dueDays: event.target.value })}
+            onChange={(event) =>
+              setCreditAndFinance({ dueDays: event.target.value })
+            }
             placeholder="30"
             type="number"
           />
         </div>
-        <div className="mb-2">
+        <div className="mb-2 sm:col-span-2">
           <Label>Currency</Label>
-          <select
-            value={state.creditAndFinance.currencyId}
-            onChange={(event) => setCreditAndFinance({ currencyId: event.target.value })}
-            className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-          >
-            <option value="">Select a currency</option>
-            {currencies.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.code} - {item.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="mb-2">
-          <Label>Payment Terms</Label>
-          <Input
-            value={state.creditAndFinance.paymentTerms}
-            onChange={(event) => setCreditAndFinance({ paymentTerms: event.target.value })}
-            placeholder="30 days credit"
+          <AutocompleteSelect<Currency, Currency[]>
+            value={selectedCurrencyLabel}
+            placeholder="Search currency"
+            search={(keyword) =>
+              currencies.filter(
+                (c) =>
+                  c.code.toLowerCase().includes(keyword.toLowerCase()) ||
+                  c.name.toLowerCase().includes(keyword.toLowerCase()),
+              )
+            }
+            getItems={(result) => result}
+            getOptionKey={(item) => item.id}
+            getOptionLabel={(item) => `${item.code} - ${item.name}`}
+            onInputChange={(value) => {
+              if (!value.trim()) setCreditAndFinance({ currencyId: "" });
+            }}
+            onSelect={(item) =>
+              setCreditAndFinance({ currencyId: item?.id ?? "" })
+            }
           />
         </div>
         <div className="mb-2 sm:col-span-2">

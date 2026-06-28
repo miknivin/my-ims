@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useState } from "react";
 import {
   Customer,
   useCreateCustomerMutation,
@@ -33,8 +33,6 @@ function CustomerFormBody({ customer, onClose }: CustomerFormProps) {
     useUpdateCustomerMutation();
   const isLoading = isCreating || isUpdating;
   const isEdit = Boolean(customer);
-
-  const currentLedgerId = useMemo(() => customer?.ledgerId ?? "", [customer]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -96,7 +94,7 @@ function CustomerFormBody({ customer, onClose }: CustomerFormProps) {
     >
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
         <div className="space-y-8">
-          <BasicDetailsSection currentLedgerId={currentLedgerId} />
+          <BasicDetailsSection />
           <ContactSection />
           <FinancialsSection />
           <OpeningBalanceSection />

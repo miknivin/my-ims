@@ -10,7 +10,7 @@ public sealed record CustomerSalesAndPricingDto(Guid? DefaultTaxId, string? Defa
 public sealed record CustomerStatusDetailsDto(string? Remarks);
 public sealed record CustomerOpeningBalanceDto(decimal Amount, string BalanceType, DateOnly AsOfDate);
 
-public sealed record CustomerDto(Guid Id, CustomerBasicDetailsDto BasicDetails, Guid? LedgerId, string? LedgerCode, string? LedgerName, CustomerContactDto Contact, CustomerBillingAddressDto BillingAddress, IReadOnlyList<CustomerShippingAddressDto> ShippingAddresses, IReadOnlyList<CustomerTaxDocumentDto> TaxDocuments, CustomerFinancialsDto Financials, CustomerSalesAndPricingDto SalesAndPricing, CustomerStatusDetailsDto StatusDetails, string Status, CustomerOpeningBalanceDto? OpeningBalance, DateTime CreatedAtUtc, DateTime UpdatedAtUtc)
+public sealed record CustomerDto(Guid Id, CustomerBasicDetailsDto BasicDetails, Guid? LedgerId, string? LedgerCode, string? LedgerName, Guid? LedgerGroupId, string? LedgerGroupName, CustomerContactDto Contact, CustomerBillingAddressDto BillingAddress, IReadOnlyList<CustomerShippingAddressDto> ShippingAddresses, IReadOnlyList<CustomerTaxDocumentDto> TaxDocuments, CustomerFinancialsDto Financials, CustomerSalesAndPricingDto SalesAndPricing, CustomerStatusDetailsDto StatusDetails, string Status, CustomerOpeningBalanceDto? OpeningBalance, DateTime CreatedAtUtc, DateTime UpdatedAtUtc)
 {
     public static CustomerDto FromEntity(Customer customer)
     {
@@ -20,6 +20,8 @@ public sealed record CustomerDto(Guid Id, CustomerBasicDetailsDto BasicDetails, 
             customer.LedgerId,
             customer.Ledger?.Code,
             customer.Ledger?.Name,
+            customer.Ledger?.LedgerGroupId,
+            customer.Ledger?.LedgerGroup?.Name,
             new CustomerContactDto(customer.Contact.Phone, customer.Contact.Mobile, customer.Contact.Email, customer.Contact.Website),
             new CustomerBillingAddressDto(customer.BillingAddress.Street, customer.BillingAddress.City, customer.BillingAddress.State, customer.BillingAddress.Pincode, customer.BillingAddress.Country),
             customer.ShippingAddresses.OrderByDescending(item => item.IsDefault).ThenBy(item => item.Name).Select(item => new CustomerShippingAddressDto(item.Id, item.Name, item.Street, item.City, item.State, item.Pincode, item.Country, item.IsDefault)).ToList(),

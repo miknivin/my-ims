@@ -3,6 +3,7 @@ import { authApi } from "./api/authApi";
 import { billWisePaymentApi } from "./api/billWisePaymentApi";
 import { billWiseReceiptApi } from "./api/billWiseReceiptApi";
 import { categoryApi } from "./api/categoryApi";
+import { codeGeneratorApi } from "./api/codeGeneratorApi";
 import { customerApi } from "./api/customerApi";
 import { currencyApi } from "./api/currencyApi";
 import { discountApi } from "./api/discountApi";
@@ -21,6 +22,10 @@ import { productApi } from "./api/productApi";
 import { salesCreditNoteApi } from "./api/salesCreditNoteApi";
 import { salesDebitNoteApi } from "./api/salesDebitNoteApi";
 import { salesInvoiceApi } from "./api/salesInvoiceApi";
+import { financialStatementsApi } from "./api/financialStatementsApi";
+import { inventoryReportsApi } from "./api/inventoryReportsApi";
+import { purchaseRegisterReportApi } from "./api/purchaseRegisterReportApi";
+import { receivablesPayablesApi } from "./api/receivablesPayablesApi";
 import { salesRegisterReportApi } from "./api/salesRegisterReportApi";
 import { salesOrderApi } from "./api/salesOrderApi";
 import { settingsApi } from "./api/settingsApi";
@@ -35,6 +40,7 @@ export const store = configureStore({
     [billWisePaymentApi.reducerPath]: billWisePaymentApi.reducer,
     [billWiseReceiptApi.reducerPath]: billWiseReceiptApi.reducer,
     [categoryApi.reducerPath]: categoryApi.reducer,
+    [codeGeneratorApi.reducerPath]: codeGeneratorApi.reducer,
     [customerApi.reducerPath]: customerApi.reducer,
     [currencyApi.reducerPath]: currencyApi.reducer,
     [discountApi.reducerPath]: discountApi.reducer,
@@ -53,6 +59,10 @@ export const store = configureStore({
     [salesCreditNoteApi.reducerPath]: salesCreditNoteApi.reducer,
     [salesDebitNoteApi.reducerPath]: salesDebitNoteApi.reducer,
     [salesInvoiceApi.reducerPath]: salesInvoiceApi.reducer,
+    [financialStatementsApi.reducerPath]: financialStatementsApi.reducer,
+    [inventoryReportsApi.reducerPath]: inventoryReportsApi.reducer,
+    [purchaseRegisterReportApi.reducerPath]: purchaseRegisterReportApi.reducer,
+    [receivablesPayablesApi.reducerPath]: receivablesPayablesApi.reducer,
     [salesRegisterReportApi.reducerPath]: salesRegisterReportApi.reducer,
     [salesOrderApi.reducerPath]: salesOrderApi.reducer,
     [settingsApi.reducerPath]: settingsApi.reducer,
@@ -67,6 +77,7 @@ export const store = configureStore({
       billWisePaymentApi.middleware,
       billWiseReceiptApi.middleware,
       categoryApi.middleware,
+      codeGeneratorApi.middleware,
       customerApi.middleware,
       currencyApi.middleware,
       discountApi.middleware,
@@ -85,6 +96,10 @@ export const store = configureStore({
       salesCreditNoteApi.middleware,
       salesDebitNoteApi.middleware,
       salesInvoiceApi.middleware,
+      financialStatementsApi.middleware,
+      inventoryReportsApi.middleware,
+      purchaseRegisterReportApi.middleware,
+      receivablesPayablesApi.middleware,
       salesRegisterReportApi.middleware,
       salesOrderApi.middleware,
       settingsApi.middleware,

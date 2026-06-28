@@ -1,8 +1,10 @@
+﻿import { useState } from "react";
 import {
   Category,
   useDeleteCategoryMutation,
   useGetCategoriesQuery,
 } from "@/redux/api/categoryApi";
+import DeleteAlert from "@/shared/components/ui/alert/DeleteAlert";
 import MasterTableActions from "./shared/MasterTableActions";
 import {
   Table,
@@ -19,15 +21,7 @@ interface CategoryTableProps {
 export default function CategoryTable({ onEdit }: CategoryTableProps) {
   const { data: categories = [], isLoading, isError } = useGetCategoriesQuery();
   const [deleteCategory, { isLoading: isDeleting }] = useDeleteCategoryMutation();
-
-  const handleDelete = async (category: Category) => {
-    const shouldDelete = window.confirm(`Delete category "${category.name}"?`);
-    if (!shouldDelete) {
-      return;
-    }
-
-    await deleteCategory(category.id).unwrap();
-  };
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -97,7 +91,7 @@ export default function CategoryTable({ onEdit }: CategoryTableProps) {
                     <MasterTableActions
                       isDeleting={isDeleting}
                       onEdit={() => onEdit(category)}
-                      onDelete={() => void handleDelete(category)}
+                      onDelete={() => setDeleteTarget({ id: category.id, name: category.name })}
                     />
                   </TableCell>
                 </TableRow>
@@ -111,6 +105,11 @@ export default function CategoryTable({ onEdit }: CategoryTableProps) {
           No category records yet. Use "Add +" to create the first one.
         </div>
       ) : null}
+      <DeleteAlert
+        open={!!deleteTarget}
+        name={deleteTarget?.name ?? ""}        onConfirm={async () => { await deleteCategory(deleteTarget!.id).unwrap(); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

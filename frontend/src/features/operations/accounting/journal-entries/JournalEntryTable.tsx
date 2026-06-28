@@ -2,6 +2,7 @@ import {
   JournalEntryRow,
   JournalEntryTotals,
 } from "@/redux/api/journalEntryApi";
+import { Link } from "react-router";
 
 interface JournalEntryTableProps {
   rows: JournalEntryRow[];
@@ -55,7 +56,12 @@ export default function JournalEntryTable({
                     {row.postingDate}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                    {row.voucherNo}
+                    <Link
+                      to={`/operations/accounting/journal-vouchers/${row.journalVoucherId}`}
+                      className="text-brand-600 hover:underline dark:text-brand-400"
+                    >
+                      {row.voucherNo}
+                    </Link>
                     <span className="ml-2 text-xs font-normal text-gray-400">
                       #{row.lineNo}
                     </span>

@@ -315,7 +315,7 @@ export function SettingsFormProvider({
 
       return ledgers.filter(
         (ledger) =>
-          (ledger.status === "Active" && ledger.allowManualPosting) ||
+          ledger.status === "Active" ||
           selectedLedgerIds.has(ledger.id)
       );
     },

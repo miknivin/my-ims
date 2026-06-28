@@ -1,6 +1,7 @@
 export type AppNavLeaf = {
   name: string;
   path?: string;
+  createPath?: string;
   items?: AppNavLeaf[];
 };
 
@@ -75,22 +76,22 @@ export const appNavItems: AppNavItem[] = [
       {
         name: "Orders",
         items: [
-          { name: "Purchase Order", path: "/operations/purchase-order" },
-          { name: "Sales Order", path: "/operations/sales-order" },
+          { name: "Purchase Order", path: "/operations/purchase-order", createPath: "/operations/purchase-order/new" },
+          { name: "Sales Order", path: "/operations/sales-order", createPath: "/operations/sales-order/new" },
         ],
       },
       {
         name: "Invoices",
         items: [
-          { name: "Purchase Invoice", path: "/operations/purchase-invoice" },
-          { name: "Sales Invoice", path: "/operations/sales-invoice" },
+          { name: "Purchase Invoice", path: "/operations/purchase-invoice", createPath: "/operations/purchase-invoice/new" },
+          { name: "Sales Invoice", path: "/operations/sales-invoice", createPath: "/operations/sales-invoice/new" },
         ],
       },
       {
         name: "Payments",
         items: [
-          { name: "Bill Wise Receipt", path: "/operations/customer-receipts" },
-          { name: "Bill Wise Payment", path: "/operations/supplier-payments" },
+          { name: "Bill Wise Receipt", path: "/operations/customer-receipts", createPath: "/operations/customer-receipts/new" },
+          { name: "Bill Wise Payment", path: "/operations/supplier-payments", createPath: "/operations/supplier-payments/new" },
         ],
       },
       {
@@ -112,6 +113,7 @@ export const appNavItems: AppNavItem[] = [
           {
             name: "Goods Receipt (GRN)",
             path: "/operations/goods-receipt-note",
+            createPath: "/operations/goods-receipt-note/new",
           },
           { name: "Stock Adjustment", path: "/operations/stock-adjustment" },
           { name: "Stock Transfer", path: "/operations/stock-transfer" },
@@ -126,10 +128,12 @@ export const appNavItems: AppNavItem[] = [
               {
                 name: "Sales Credit Notes",
                 path: "/operations/adjustments/sales-credit-notes",
+                createPath: "/operations/adjustments/sales-credit-notes/new",
               },
               {
                 name: "Sales Debit Notes",
                 path: "/operations/adjustments/sales-debit-notes",
+                createPath: "/operations/adjustments/sales-debit-notes/new",
               },
             ],
           },
@@ -139,10 +143,12 @@ export const appNavItems: AppNavItem[] = [
               {
                 name: "Purchase Credit Notes",
                 path: "/operations/adjustments/purchase-credit-notes",
+                createPath: "/operations/adjustments/purchase-credit-notes/new",
               },
               {
                 name: "Purchase Debit Notes",
                 path: "/operations/adjustments/purchase-debit-notes",
+                createPath: "/operations/adjustments/purchase-debit-notes/new",
               },
             ],
           },

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router";
 import {
   CreateManualJournalVoucherPayload,
   useCreateManualJournalVoucherMutation,
@@ -108,7 +109,12 @@ export default function JournalVoucherListPage() {
                       {voucher.postingDate}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                      {voucher.voucherNo}
+                      <Link
+                        to={`/operations/accounting/journal-vouchers/${voucher.id}`}
+                        className="text-brand-600 hover:underline dark:text-brand-400"
+                      >
+                        {voucher.voucherNo}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">

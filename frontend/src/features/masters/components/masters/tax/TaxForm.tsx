@@ -7,6 +7,7 @@ import {
   useCreateTaxMutation,
   useUpdateTaxMutation,
 } from "@/redux/api/taxApi";
+import CodeInput from "@/shared/components/form/CodeInput";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import Button from "@/shared/components/ui/button/Button";
@@ -162,10 +163,14 @@ export default function TaxForm({ tax, onClose }: TaxFormProps) {
           <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="GST 18%" />
         </div>
         <div>
-          <Label>
-            Code<span className="text-error-500">*</span>
-          </Label>
-          <Input value={code} onChange={(event) => setCode(event.target.value)} placeholder="GST18" />
+          <CodeInput
+            entity="tax"
+            label="Code"
+            required
+            value={code}
+            onChange={setCode}
+            placeholder="TAX-001"
+          />
         </div>
       </div>
 

@@ -1,9 +1,14 @@
 using System.Text;
 using backend.Features.Auth;
 using backend.Features.Accounting.Journals;
+using backend.Features.Reports.FinancialStatements;
+using backend.Features.Reports.Inventory;
 using backend.Features.Reports.LedgerWise;
+using backend.Features.Reports.ReceivablesPayables;
+using backend.Features.Reports.SalesPurchase.PurchaseRegister;
 using backend.Features.Reports.SalesPurchase.SalesRegister;
 using backend.Features.Lookups;
+using backend.Features.Utils;
 using backend.Features.Inventory.GoodsReceiptNotes;
 using backend.Features.Masters.Categories;
 using backend.Features.Masters.Customers;
@@ -28,6 +33,7 @@ using backend.Features.Transactions.SalesDebitNotes;
 using backend.Features.Transactions.SalesInvoices;
 using backend.Features.Transactions.SalesOrders;
 using backend.Infrastructure.Authentication;
+using backend.Infrastructure.Middleware;
 using backend.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -83,6 +89,8 @@ builder.Services
         };
     });
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddAuthorization();
 builder.Services.AddAntiforgery();
 builder.Services.AddCors(options =>
@@ -121,7 +129,10 @@ using (var scope = app.Services.CreateScope())
 }
 
 await AuthBootstrapper.SeedAsync(app.Services);
+await SystemLedgerSeeder.SeedAsync(app.Services);
+await AccountingLedgerSeeder.SeedAsync(app.Services);
 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseCors("frontend");
 app.UseAuthentication();
@@ -129,10 +140,15 @@ app.UseAuthorization();
 app.UseAntiforgery();
 app.MapGet("/", () => Results.Ok(new { message = "IMS backend is running." }));
 app.MapAuthEndpoints();
+app.MapCodeGeneratorEndpoints();
 app.MapLookupEndpoints();
 app.MapJournalEntryEndpoints();
 app.MapJournalVoucherEndpoints();
+app.MapFinancialStatementEndpoints();
+app.MapInventoryReportEndpoints();
 app.MapLedgerWiseReportEndpoints();
+app.MapReceivablesPayablesEndpoints();
+app.MapPurchaseRegisterReportEndpoints();
 app.MapSalesRegisterReportEndpoints();
 app.MapCategoryEndpoints();
 app.MapCustomerEndpoints();

@@ -12,6 +12,7 @@ internal static class CustomerHandlers
     private static IQueryable<Customer> BuildQuery(AppDbContext dbContext) =>
         dbContext.Customers
             .Include(current => current.Ledger)
+                .ThenInclude(l => l!.LedgerGroup)
             .Include(current => current.OpeningBalance)
             .Include(current => current.SalesAndPricing.DefaultTax);
 
@@ -56,17 +57,38 @@ internal static class CustomerHandlers
             return TypedResults.Conflict(new ApiResponse<object>(false, "Customer with this code or name already exists.", null));
         }
 
-        var (ledger, resolutionError) = await PopulateReferencesAsync(dbContext, request.LedgerId, buildResult.SalesAndPricing, cancellationToken);
-        if (resolutionError is not null)
+        var (ledgerGroup, taxError) = await PopulateCustomerReferencesAsync(request.LedgerGroupId, buildResult.SalesAndPricing, dbContext, cancellationToken);
+        if (taxError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, taxError, null));
         }
 
         var now = DateTime.UtcNow;
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+        var ledger = new Ledger
+        {
+            Code = buildResult.BasicDetails.Code,
+            Name = buildResult.BasicDetails.Name,
+            LedgerGroupId = ledgerGroup!.Id,
+            LedgerGroup = ledgerGroup,
+            Status = LedgerStatuses.Active,
+            AllowManualPosting = true,
+            IsBillWise = true,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
+        };
+
+        var createConflictMessage = await CheckLedgerConflictAsync(ledger.Code, ledger.Name, null, dbContext, cancellationToken);
+        if (createConflictMessage is not null)
+        {
+            return TypedResults.Conflict(new ApiResponse<object>(false, createConflictMessage, null));
+        }
+
         var customer = new Customer
         {
             BasicDetails = buildResult.BasicDetails,
-            LedgerId = ledger?.Id,
+            LedgerId = ledger.Id,
             Ledger = ledger,
             Contact = buildResult.Contact,
             BillingAddress = buildResult.BillingAddress,
@@ -93,8 +115,18 @@ internal static class CustomerHandlers
             };
         }
 
+        dbContext.Ledgers.Add(ledger);
         dbContext.Customers.Add(customer);
+
+        if (customer.OpeningBalance is not null)
+        {
+            var journalError = await CustomerOpeningBalanceJournalPosting.PreparePostAsync(dbContext, customer, cancellationToken);
+            if (journalError is not null)
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return TypedResults.Created($"/api/masters/customers/{customer.Id}", new ApiResponse<CustomerDto>(true, "Customer created successfully.", CustomerDto.FromEntity(customer)));
     }
@@ -129,15 +161,61 @@ internal static class CustomerHandlers
             return TypedResults.Conflict(new ApiResponse<object>(false, "Customer with this code or name already exists.", null));
         }
 
-        var (ledger, resolutionError) = await PopulateReferencesAsync(dbContext, request.LedgerId, buildResult.SalesAndPricing, cancellationToken);
-        if (resolutionError is not null)
+        var (ledgerGroup, taxError) = await PopulateCustomerReferencesAsync(request.LedgerGroupId, buildResult.SalesAndPricing, dbContext, cancellationToken);
+        if (taxError is not null)
         {
-            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, taxError, null));
+        }
+
+        var currentLedger = customer.Ledger;
+        var ledgerNow = DateTime.UtcNow;
+
+        if (currentLedger is null)
+        {
+            currentLedger = new Ledger
+            {
+                Code = buildResult.BasicDetails.Code,
+                Name = buildResult.BasicDetails.Name,
+                LedgerGroupId = ledgerGroup!.Id,
+                LedgerGroup = ledgerGroup,
+                Status = LedgerStatuses.Active,
+                AllowManualPosting = true,
+                IsBillWise = true,
+                CreatedAtUtc = ledgerNow,
+                UpdatedAtUtc = ledgerNow
+            };
+            dbContext.Ledgers.Add(currentLedger);
+            customer.LedgerId = currentLedger.Id;
+            customer.Ledger = currentLedger;
+        }
+        else
+        {
+            var ledgerGroupChanged = currentLedger.LedgerGroupId != ledgerGroup!.Id;
+            if (ledgerGroupChanged)
+            {
+                var hasTransactions = await dbContext.JournalEntries.AnyAsync(
+                    current => current.LedgerId == currentLedger.Id, cancellationToken);
+                if (hasTransactions)
+                {
+                    return TypedResults.BadRequest(new ApiResponse<object>(false,
+                        "Ledger group cannot be changed after transactions exist for this customer ledger.", null));
+                }
+            }
+
+            var updateConflictMessage = await CheckLedgerConflictAsync(buildResult.BasicDetails.Code, buildResult.BasicDetails.Name, currentLedger.Id, dbContext, cancellationToken);
+            if (updateConflictMessage is not null)
+            {
+                return TypedResults.Conflict(new ApiResponse<object>(false, updateConflictMessage, null));
+            }
+
+            currentLedger.Code = buildResult.BasicDetails.Code;
+            currentLedger.Name = buildResult.BasicDetails.Name;
+            currentLedger.LedgerGroupId = ledgerGroup.Id;
+            currentLedger.LedgerGroup = ledgerGroup;
+            currentLedger.UpdatedAtUtc = ledgerNow;
         }
 
         customer.BasicDetails = buildResult.BasicDetails;
-        customer.LedgerId = ledger?.Id;
-        customer.Ledger = ledger;
         customer.Contact = buildResult.Contact;
         customer.BillingAddress = buildResult.BillingAddress;
         customer.ShippingAddresses = buildResult.ShippingAddresses;
@@ -147,6 +225,8 @@ internal static class CustomerHandlers
         customer.StatusDetails = buildResult.StatusDetails;
         customer.Status = buildResult.Status;
         customer.UpdatedAtUtc = DateTime.UtcNow;
+
+        var hadPreviousOb = customer.OpeningBalance is not null;
 
         if (buildResult.OpeningBalance is null)
         {
@@ -177,6 +257,10 @@ internal static class CustomerHandlers
             customer.OpeningBalance.UpdatedAtUtc = DateTime.UtcNow;
         }
 
+        var journalUpdateError = await CustomerOpeningBalanceJournalPosting.PrepareUpdateAsync(dbContext, customer, hadPreviousOb, cancellationToken);
+        if (journalUpdateError is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, journalUpdateError, null));
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(new ApiResponse<CustomerDto>(true, "Customer updated successfully.", CustomerDto.FromEntity(customer)));
@@ -184,10 +268,29 @@ internal static class CustomerHandlers
 
     internal static async Task<IResult> DeleteAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
     {
-        var customer = await dbContext.Customers.Include(current => current.OpeningBalance).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+        var customer = await dbContext.Customers
+            .Include(current => current.OpeningBalance)
+            .Include(current => current.Ledger)
+            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (customer is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Customer not found.", null));
+        }
+
+        if (customer.Ledger is not null)
+        {
+            var hasJournalEntries = await dbContext.JournalEntries
+                .AnyAsync(current => current.LedgerId == customer.Ledger.Id, cancellationToken);
+
+            if (hasJournalEntries)
+            {
+                customer.Ledger.Status = LedgerStatuses.Deleted;
+                customer.Ledger.UpdatedAtUtc = DateTime.UtcNow;
+            }
+            else
+            {
+                dbContext.Ledgers.Remove(customer.Ledger);
+            }
         }
 
         dbContext.Customers.Remove(customer);
@@ -419,34 +522,55 @@ internal static class CustomerHandlers
             .Where(item => !string.IsNullOrWhiteSpace(item.Number))
             .ToList();
 
-    private static async Task<(Ledger? Ledger, string? Error)> PopulateReferencesAsync(AppDbContext dbContext, Guid? ledgerId, CustomerSalesAndPricing salesAndPricing, CancellationToken cancellationToken)
+    private static async Task<(LedgerGroup? LedgerGroup, string? Error)> PopulateCustomerReferencesAsync(
+        Guid ledgerGroupId,
+        CustomerSalesAndPricing salesAndPricing,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
     {
-        Ledger? ledger = null;
+        if (ledgerGroupId == Guid.Empty)
+            return (null, "Ledger group is required.");
 
-        if (ledgerId is not null)
-        {
-            ledger = await dbContext.Ledgers.FirstOrDefaultAsync(current => current.Id == ledgerId.Value, cancellationToken);
-            if (ledger is null)
-            {
-                return (null, "Selected ledger does not exist.");
-            }
+        var ledgerGroup = await dbContext.LedgerGroups.FirstOrDefaultAsync(
+            current => current.Id == ledgerGroupId, cancellationToken);
 
-            if (ledger.Status != LedgerStatuses.Active)
-            {
-                return (null, "Selected ledger must be active.");
-            }
-        }
+        if (ledgerGroup is null)
+            return (null, "Selected ledger group does not exist.");
+
+        if (ledgerGroup.Status != LedgerGroupStatuses.Active)
+            return (null, "Selected ledger group must be active.");
+
+        if (!string.Equals(ledgerGroup.Nature, LedgerGroupNatures.Asset, StringComparison.OrdinalIgnoreCase))
+            return (null, "Selected ledger group must be an asset group for customers.");
 
         if (salesAndPricing.DefaultTaxId is not null)
         {
-            salesAndPricing.DefaultTax = await dbContext.Taxes.FirstOrDefaultAsync(current => current.Id == salesAndPricing.DefaultTaxId.Value, cancellationToken);
+            salesAndPricing.DefaultTax = await dbContext.Taxes.FirstOrDefaultAsync(
+                current => current.Id == salesAndPricing.DefaultTaxId.Value, cancellationToken);
             if (salesAndPricing.DefaultTax is null)
-            {
                 return (null, "Selected default tax does not exist.");
-            }
         }
 
-        return (ledger, null);
+        return (ledgerGroup, null);
+    }
+
+    private static async Task<string?> CheckLedgerConflictAsync(
+        string code,
+        string name,
+        Guid? excludeLedgerId,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var conflict = await dbContext.Ledgers
+            .Where(current => current.Id != excludeLedgerId && (current.Code == code || current.Name == name))
+            .Select(current => new { current.Status })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (conflict is null) return null;
+
+        return conflict.Status == LedgerStatuses.Deleted
+            ? "A ledger with this code or name was previously deleted. Codes cannot be reused."
+            : "A ledger with this customer code or name already exists.";
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

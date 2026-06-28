@@ -1,12 +1,14 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useGetCurrenciesQuery } from "@/redux/api/currencyApi";
+import { type Currency, useGetCurrenciesQuery } from "@/redux/api/currencyApi";
 import {
   Ledger,
   LedgerStatus,
   useCreateLedgerMutation,
   useUpdateLedgerMutation,
 } from "@/redux/api/ledgerApi";
-import { useGetLedgerGroupsQuery } from "@/redux/api/ledgerGroupApi";
+import { LedgerGroup, useLazyGetLedgerGroupsQuery } from "@/redux/api/ledgerGroupApi";
+import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import CodeInput from "@/shared/components/form/CodeInput";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import Button from "@/shared/components/ui/button/Button";
@@ -21,12 +23,14 @@ export default function LedgerForm({ ledger, onClose }: LedgerFormProps) {
   const [name, setName] = useState("");
   const [alias, setAlias] = useState("");
   const [ledgerGroupId, setLedgerGroupId] = useState("");
+  const [ledgerGroupLabel, setLedgerGroupLabel] = useState("");
   const [defaultCurrencyId, setDefaultCurrencyId] = useState("");
+  const [defaultCurrencyLabel, setDefaultCurrencyLabel] = useState("");
   const [status, setStatus] = useState<LedgerStatus>("Active");
   const [allowManualPosting, setAllowManualPosting] = useState(true);
   const [isBillWise, setIsBillWise] = useState(false);
   const [formError, setFormError] = useState("");
-  const { data: ledgerGroups = [] } = useGetLedgerGroupsQuery();
+  const [searchGroups] = useLazyGetLedgerGroupsQuery();
   const { data: currencies = [] } = useGetCurrenciesQuery();
   const [createLedger, { isLoading: isCreating }] = useCreateLedgerMutation();
   const [updateLedger, { isLoading: isUpdating }] = useUpdateLedgerMutation();
@@ -36,19 +40,31 @@ export default function LedgerForm({ ledger, onClose }: LedgerFormProps) {
     setName(ledger?.name ?? "");
     setAlias(ledger?.alias ?? "");
     setLedgerGroupId(ledger?.ledgerGroupId ?? "");
+    setLedgerGroupLabel(ledger?.ledgerGroupName ?? "");
     setDefaultCurrencyId(ledger?.defaultCurrencyId ?? "");
+    setDefaultCurrencyLabel("");
     setStatus(ledger?.status ?? "Active");
     setAllowManualPosting(ledger?.allowManualPosting ?? true);
     setIsBillWise(ledger?.isBillWise ?? false);
     setFormError("");
   }, [ledger]);
 
-  const activeLedgerGroups = useMemo(
-    () =>
-      ledgerGroups.filter(
-        (item) => item.status === "Active" || item.id === ledger?.ledgerGroupId
-      ),
-    [ledgerGroups, ledger?.ledgerGroupId]
+  useEffect(() => {
+    if (!ledger?.defaultCurrencyId || currencies.length === 0) return;
+    const match = currencies.find((c) => c.id === ledger.defaultCurrencyId);
+    if (match) setDefaultCurrencyLabel(`${match.code} - ${match.name}`);
+  }, [ledger?.defaultCurrencyId, currencies]);
+
+  const searchCurrencies = useMemo(
+    () => (keyword: string): Currency[] => {
+      const lower = keyword.toLowerCase();
+      return currencies.filter(
+        (c) =>
+          c.status === "Active" &&
+          (c.code.toLowerCase().includes(lower) || c.name.toLowerCase().includes(lower)),
+      );
+    },
+    [currencies],
   );
 
   const isLoading = isCreating || isUpdating;
@@ -104,12 +120,12 @@ export default function LedgerForm({ ledger, onClose }: LedgerFormProps) {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-          <Label>
-            Code<span className="text-error-500">*</span>
-          </Label>
-          <Input
+          <CodeInput
+            entity="ledger"
+            label="Code"
+            required
             value={code}
-            onChange={(event) => setCode(event.target.value)}
+            onChange={setCode}
             placeholder="CASH001"
           />
         </div>
@@ -154,33 +170,48 @@ export default function LedgerForm({ ledger, onClose }: LedgerFormProps) {
           <Label>
             Ledger Group<span className="text-error-500">*</span>
           </Label>
-          <select
-            value={ledgerGroupId}
-            onChange={(event) => setLedgerGroupId(event.target.value)}
-            className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-          >
-            <option value="">Select a ledger group</option>
-            {activeLedgerGroups.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name} ({item.nature})
-              </option>
-            ))}
-          </select>
+          <AutocompleteSelect<LedgerGroup, LedgerGroup[]>
+            value={ledgerGroupLabel}
+            placeholder="Search ledger group"
+            search={(keyword) =>
+              searchGroups({ keyword, limit: 10 }).unwrap().then((r) => r.items)
+            }
+            getItems={(result) => result}
+            getOptionKey={(item) => item.id}
+            getOptionLabel={(item) => `${item.code} - ${item.name}`}
+            onInputChange={(value) => {
+              if (!value.trim()) {
+                setLedgerGroupId("");
+                setLedgerGroupLabel("");
+              }
+            }}
+            onSelect={(item) => {
+              setLedgerGroupId(item?.id ?? "");
+              setLedgerGroupLabel(item ? `${item.code} - ${item.name}` : "");
+            }}
+          />
         </div>
         <div>
           <Label>Default Currency</Label>
-          <select
-            value={defaultCurrencyId}
-            onChange={(event) => setDefaultCurrencyId(event.target.value)}
-            className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-          >
-            <option value="">Select a default currency</option>
-            {currencies.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.code} - {item.name}
-              </option>
-            ))}
-          </select>
+          <AutocompleteSelect<Currency, Currency[]>
+            selectedKey={defaultCurrencyId || null}
+            value={defaultCurrencyLabel}
+            placeholder="Search currency"
+            search={searchCurrencies}
+            getItems={(result) => result}
+            getOptionKey={(item) => item.id}
+            getOptionLabel={(item) => `${item.code} - ${item.name}`}
+            onInputChange={(val) => {
+              if (!val.trim()) {
+                setDefaultCurrencyId("");
+                setDefaultCurrencyLabel("");
+              }
+            }}
+            onSelect={(item) => {
+              setDefaultCurrencyId(item?.id ?? "");
+              setDefaultCurrencyLabel(item ? `${item.code} - ${item.name}` : "");
+            }}
+          />
         </div>
       </div>
 

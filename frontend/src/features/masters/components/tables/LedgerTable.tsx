@@ -1,8 +1,10 @@
+﻿import { useState } from "react";
 import {
   Ledger,
   useDeleteLedgerMutation,
   useGetLedgersQuery,
 } from "@/redux/api/ledgerApi";
+import DeleteAlert from "@/shared/components/ui/alert/DeleteAlert";
 import MasterTableActions from "./shared/MasterTableActions";
 import {
   Table,
@@ -19,15 +21,7 @@ interface LedgerTableProps {
 export default function LedgerTable({ onEdit }: LedgerTableProps) {
   const { data: ledgers = [], isLoading, isError } = useGetLedgersQuery();
   const [deleteLedger, { isLoading: isDeleting }] = useDeleteLedgerMutation();
-
-  const handleDelete = async (ledger: Ledger) => {
-    const shouldDelete = window.confirm(`Delete ledger "${ledger.name}"?`);
-    if (!shouldDelete) {
-      return;
-    }
-
-    await deleteLedger(ledger.id).unwrap();
-  };
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -129,7 +123,7 @@ export default function LedgerTable({ onEdit }: LedgerTableProps) {
                       }}
                       onDelete={() => {
                         if (!ledger.isSystem) {
-                          void handleDelete(ledger);
+                          setDeleteTarget({ id: ledger.id, name: ledger.name });
                         }
                       }}
                     />
@@ -145,6 +139,11 @@ export default function LedgerTable({ onEdit }: LedgerTableProps) {
           No ledger records yet. Create ledger groups first, then add the first ledger.
         </div>
       ) : null}
+      <DeleteAlert
+        open={!!deleteTarget}
+        name={deleteTarget?.name ?? ""}        onConfirm={async () => { await deleteLedger(deleteTarget!.id).unwrap(); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

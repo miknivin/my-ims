@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { PagedResponse } from "@/shared/types/filtering";
 
 export type LedgerGroupStatus = "Active" | "Inactive";
 export type LedgerGroupNature = "Asset" | "Liability" | "Income" | "Expense" | "Equity";
@@ -30,6 +31,15 @@ export interface LedgerGroupPayload {
   status: LedgerGroupStatus;
 }
 
+export interface LedgerGroupFilterParams {
+  keyword?: string;
+  nature?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+}
+
 export const ledgerGroupApi = createApi({
   reducerPath: "ledgerGroupApi",
   baseQuery: fetchBaseQuery({
@@ -38,9 +48,12 @@ export const ledgerGroupApi = createApi({
   }),
   tagTypes: ["LedgerGroup"],
   endpoints: (builder) => ({
-    getLedgerGroups: builder.query<LedgerGroup[], void>({
-      query: () => "/",
-      transformResponse: (response: ApiResponse<LedgerGroup[]>) => response.data,
+    getLedgerGroups: builder.query<PagedResponse<LedgerGroup>, LedgerGroupFilterParams | void>({
+      query: (params) => {
+        const { page = 1, limit = 20, ...rest } = (params as LedgerGroupFilterParams) ?? {};
+        return { url: "/", params: { page, limit, ...rest } };
+      },
+      transformResponse: (response: ApiResponse<PagedResponse<LedgerGroup>>) => response.data,
       providesTags: ["LedgerGroup"],
     }),
     createLedgerGroup: builder.mutation<LedgerGroup, LedgerGroupPayload>({
@@ -73,6 +86,7 @@ export const ledgerGroupApi = createApi({
 
 export const {
   useGetLedgerGroupsQuery,
+  useLazyGetLedgerGroupsQuery,
   useCreateLedgerGroupMutation,
   useUpdateLedgerGroupMutation,
   useDeleteLedgerGroupMutation,

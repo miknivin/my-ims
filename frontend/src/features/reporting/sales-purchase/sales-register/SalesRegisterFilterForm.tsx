@@ -36,6 +36,20 @@ export default function SalesRegisterFilterForm({
   onClear,
   searchCustomers,
 }: SalesRegisterFilterFormProps) {
+  const handleFromDateChange = (fromDate: string) => {
+    onChange({
+      fromDate,
+      toDate: values.toDate && fromDate && fromDate > values.toDate ? fromDate : values.toDate,
+    });
+  };
+
+  const handleToDateChange = (toDate: string) => {
+    onChange({
+      fromDate: values.fromDate && toDate && toDate < values.fromDate ? toDate : values.fromDate,
+      toDate,
+    });
+  };
+
   return (
     <form
       className="space-y-5"
@@ -59,7 +73,8 @@ export default function SalesRegisterFilterForm({
           <input
             type="date"
             value={values.fromDate}
-            onChange={(event) => onChange({ fromDate: event.target.value })}
+            max={values.toDate || undefined}
+            onChange={(event) => handleFromDateChange(event.target.value)}
             className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
           />
         </Field>
@@ -68,7 +83,8 @@ export default function SalesRegisterFilterForm({
           <input
             type="date"
             value={values.toDate}
-            onChange={(event) => onChange({ toDate: event.target.value })}
+            min={values.fromDate || undefined}
+            onChange={(event) => handleToDateChange(event.target.value)}
             className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90"
           />
         </Field>

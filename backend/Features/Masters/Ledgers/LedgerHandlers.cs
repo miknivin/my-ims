@@ -183,7 +183,22 @@ internal static class LedgerHandlers
             return TypedResults.BadRequest(new ApiResponse<object>(false, "System ledgers cannot be deleted.", null));
         }
 
-        dbContext.Ledgers.Remove(ledger);
+        var hasJournalEntries = await dbContext.JournalEntries
+            .AnyAsync(current => current.LedgerId == ledger.Id, cancellationToken);
+
+        if (hasJournalEntries)
+        {
+            if (ledger.Status == LedgerStatuses.Deleted)
+                return TypedResults.BadRequest(new ApiResponse<object>(false, "Ledger is already deleted and has journal entries. It cannot be removed.", null));
+
+            ledger.Status = LedgerStatuses.Deleted;
+            ledger.UpdatedAtUtc = DateTime.UtcNow;
+        }
+        else
+        {
+            dbContext.Ledgers.Remove(ledger);
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return TypedResults.Ok(new ApiResponse<object>(true, "Ledger deleted successfully.", null));

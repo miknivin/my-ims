@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import CodeInput from "@/shared/components/form/CodeInput";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import Button from "@/shared/components/ui/button/Button";
@@ -77,15 +78,7 @@ export default function UomForm({ uom, onClose }: UomFormProps) {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-          <Label>
-            Code<span className="text-error-500">*</span>
-          </Label>
-          <Input
-            type="text"
-            placeholder="PCS"
-            value={code}
-            onChange={(event) => setCode(event.target.value)}
-          />
+          <CodeInput entity="uom" label="Code" required value={code} onChange={setCode} placeholder="PCS" />
         </div>
         <div>
           <Label>

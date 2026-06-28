@@ -80,6 +80,12 @@ export const journalVoucherApi = createApi({
       ) => response.data,
       providesTags: ["JournalVoucher"],
     }),
+    getJournalVoucherById: builder.query<JournalVoucher, string>({
+      query: (id) => `/${id}`,
+      transformResponse: (response: ApiResponse<JournalVoucher>) =>
+        response.data,
+      providesTags: (_result, _error, id) => [{ type: "JournalVoucher", id }],
+    }),
     createManualJournalVoucher: builder.mutation<
       JournalVoucher,
       CreateManualJournalVoucherPayload
@@ -98,5 +104,6 @@ export const journalVoucherApi = createApi({
 
 export const {
   useGetJournalVouchersQuery,
+  useGetJournalVoucherByIdQuery,
   useCreateManualJournalVoucherMutation,
 } = journalVoucherApi;

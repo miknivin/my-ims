@@ -1,8 +1,10 @@
+﻿import { useState } from "react";
 import {
   Discount,
   useDeleteDiscountMutation,
   useGetDiscountsQuery,
 } from "@/redux/api/discountApi";
+import DeleteAlert from "@/shared/components/ui/alert/DeleteAlert";
 import MasterTableActions from "./shared/MasterTableActions";
 import {
   Table,
@@ -19,15 +21,7 @@ interface DiscountTableProps {
 export default function DiscountTable({ onEdit }: DiscountTableProps) {
   const { data: discounts = [], isLoading, isError } = useGetDiscountsQuery();
   const [deleteDiscount, { isLoading: isDeleting }] = useDeleteDiscountMutation();
-
-  const handleDelete = async (discount: Discount) => {
-    const shouldDelete = window.confirm(`Delete discount "${discount.name}"?`);
-    if (!shouldDelete) {
-      return;
-    }
-
-    await deleteDiscount(discount.id).unwrap();
-  };
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -108,7 +102,7 @@ export default function DiscountTable({ onEdit }: DiscountTableProps) {
                     <MasterTableActions
                       isDeleting={isDeleting}
                       onEdit={() => onEdit(discount)}
-                      onDelete={() => void handleDelete(discount)}
+                      onDelete={() => setDeleteTarget({ id: discount.id, name: discount.name })}
                     />
                   </TableCell>
                 </TableRow>
@@ -122,6 +116,11 @@ export default function DiscountTable({ onEdit }: DiscountTableProps) {
           No discount records yet. Use "Add +" to create the first one.
         </div>
       ) : null}
+      <DeleteAlert
+        open={!!deleteTarget}
+        name={deleteTarget?.name ?? ""}        onConfirm={async () => { await deleteDiscount(deleteTarget!.id).unwrap(); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

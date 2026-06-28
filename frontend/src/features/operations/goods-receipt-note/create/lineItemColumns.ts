@@ -36,7 +36,7 @@ export interface GoodsReceiptLineColumnMeta {
 }
 
 export const GOODS_RECEIPT_LINE_COLUMNS: GoodsReceiptLineColumnMeta[] = [
-  { key: "code", label: "Code", nature: "readonly", defaultSelected: true, defaultWidth: 110, minWidth: 90 },
+  { key: "code", label: "Code", nature: "readonly", defaultSelected: false, defaultWidth: 110, minWidth: 90 },
   { key: "productNameSnapshot", label: "Product", nature: "lookup", defaultSelected: true, defaultWidth: 260, minWidth: 180 },
   { key: "ubc", label: "UBC", nature: "input", defaultSelected: false, defaultWidth: 140, minWidth: 100 },
   { key: "warehouseId", label: "Warehouse", nature: "lookup", defaultSelected: true, defaultWidth: 160, minWidth: 130 },
@@ -44,10 +44,10 @@ export const GOODS_RECEIPT_LINE_COLUMNS: GoodsReceiptLineColumnMeta[] = [
   { key: "fRate", label: "F Rate", nature: "input", defaultSelected: false, defaultWidth: 110, minWidth: 90, align: "right" },
   { key: "rate", label: "Rate", nature: "input", defaultSelected: true, defaultWidth: 110, minWidth: 90, align: "right" },
   { key: "quantity", label: "Qty", nature: "input", defaultSelected: true, defaultWidth: 90, minWidth: 80, align: "right" },
-  { key: "focQuantity", label: "FOC", nature: "input", defaultSelected: true, defaultWidth: 90, minWidth: 80, align: "right" },
-  { key: "grossAmount", label: "Gross", nature: "readonly", defaultSelected: true, defaultWidth: 110, minWidth: 90, align: "right" },
+  { key: "focQuantity", label: "FOC", nature: "input", defaultSelected: false, defaultWidth: 90, minWidth: 80, align: "right" },
+  { key: "grossAmount", label: "Gross", nature: "readonly", defaultSelected: false, defaultWidth: 110, minWidth: 90, align: "right" },
   { key: "discountPercent", label: "Disc %", nature: "input", defaultSelected: true, defaultWidth: 100, minWidth: 90, align: "right" },
-  { key: "discountAmount", label: "Disc Amt", nature: "readonly", defaultSelected: true, defaultWidth: 120, minWidth: 100, align: "right" },
+  { key: "discountAmount", label: "Disc Amt", nature: "readonly", defaultSelected: false, defaultWidth: 120, minWidth: 100, align: "right" },
   { key: "total", label: "Total", nature: "readonly", defaultSelected: true, defaultWidth: 120, minWidth: 100, align: "right" },
   { key: "manufacturingDateUtc", label: "Mfg Date", nature: "input", defaultSelected: false, defaultWidth: 130, minWidth: 120 },
   { key: "expiryDateUtc", label: "Exp Date", nature: "input", defaultSelected: false, defaultWidth: 130, minWidth: 120 },

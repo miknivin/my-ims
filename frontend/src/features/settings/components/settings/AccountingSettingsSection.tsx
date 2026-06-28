@@ -5,6 +5,7 @@ import { useSettingsForm } from "./SettingsFormContext";
 
 type LedgerFieldProps = {
   label: string;
+  selectedKey: string | null;
   value: string;
   helpText: string;
   onInputChange: (value: string) => void;
@@ -14,6 +15,7 @@ type LedgerFieldProps = {
 
 function LedgerField({
   label,
+  selectedKey,
   value,
   helpText,
   onInputChange,
@@ -24,6 +26,7 @@ function LedgerField({
     <div>
       <Label>{label}</Label>
       <AutocompleteSelect
+        selectedKey={selectedKey}
         value={value}
         placeholder="Search ledger"
         search={search}
@@ -71,6 +74,7 @@ export default function AccountingSettingsSection() {
       | "grnDiscountLedgerName"
       | "roundOffLedgerName"
   ) => ({
+    selectedKey: state.accountingSettings[idKey],
     value: state.accountingSettings[nameKey],
     onInputChange: (value: string) =>
       setAccountingSettings({

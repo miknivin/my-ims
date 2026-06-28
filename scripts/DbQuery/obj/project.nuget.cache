@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "pzY4fT0uJmG5HUGFAyA67mjm2JOyXTdt1x6U30BJ9S6Suj2C5Ud3MCPtqtRCRM7l4afLbb9pGE1jSvldJByhSA==",
+  "success": true,
+  "projectFilePath": "D:\\My IMS\\scripts\\DbQuery\\DbQuery.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\nivin\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.0\\microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\nivin\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.0\\microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512",
+    "C:\\Users\\nivin\\.nuget\\packages\\npgsql\\8.0.3\\npgsql.8.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -227,6 +227,21 @@ export default function BillWiseFormHeader({
             />
           </div>
 
+          <div className="md:col-span-2">
+            <label className={labelClass}>Notes</label>
+            <textarea
+              rows={4}
+              className={areaClass}
+              value={notes}
+              onChange={(event) => onNotesChange(event.target.value)}
+              placeholder="Notes"
+            />
+          </div>
+        </div>
+      </TransactionSectionCard>
+
+      <TransactionSectionCard title="Payment Summary">
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label className={labelClass}>Total Allocated</label>
             <input
@@ -245,20 +260,9 @@ export default function BillWiseFormHeader({
             />
           </div>
 
-          <div className="md:col-span-2">
+          <div>
             <label className={labelClass}>Amount</label>
             <input className={inputClass} value={amount.toFixed(2)} readOnly />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className={labelClass}>Notes</label>
-            <textarea
-              rows={4}
-              className={areaClass}
-              value={notes}
-              onChange={(event) => onNotesChange(event.target.value)}
-              placeholder="Notes"
-            />
           </div>
         </div>
       </TransactionSectionCard>

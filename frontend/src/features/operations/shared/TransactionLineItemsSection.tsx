@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
+import { Trash2 } from "lucide-react";
 import { Modal } from "@/shared/components/ui/modal";
 import Button from "@/shared/components/ui/button/Button";
 import TransactionSectionCard from "./TransactionSectionCard";
 import { TransactionLineColumnDefinition } from "./transactionLineItems";
+import { loadColumnPrefs, saveColumnPrefs } from "./columnPreferences";
 
 const ACTION_COLUMN_WIDTH = 100;
 const INDEX_COLUMN_WIDTH = 80;
@@ -26,6 +28,7 @@ interface TransactionLineItemsSectionProps<
   showAddButton?: boolean;
   addLineLabel?: string;
   removeLineLabel?: string;
+  storageKey?: string;
 }
 
 function TransactionLineItemRow<TLine, TContext, TKey extends string = string>({
@@ -50,12 +53,12 @@ function TransactionLineItemRow<TLine, TContext, TKey extends string = string>({
       className="grid border-b border-gray-100 dark:border-white/[0.05]"
       style={{ gridTemplateColumns: templateColumns }}
     >
-      <div className="flex items-center overflow-hidden px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
+      <div className="flex items-center overflow-hidden border-r border-gray-100 px-3 py-3 text-xs text-gray-500 dark:border-white/[0.05] dark:text-gray-400">
         <span className="block truncate">{displayIndex}</span>
       </div>
 
       {columns.map((column) => (
-        <div key={column.key} className="overflow-hidden px-1 py-2">
+        <div key={column.key} className="overflow-hidden border-r border-gray-100 px-1 py-2 dark:border-white/[0.05]">
           {column.renderCell(getCellContext(line))}
         </div>
       ))}
@@ -64,9 +67,10 @@ function TransactionLineItemRow<TLine, TContext, TKey extends string = string>({
         <button
           type="button"
           onClick={() => onRemove(line)}
-          className="rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+          aria-label={removeLabel}
+          className="rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
         >
-          {removeLabel}
+          <Trash2 size={14} />
         </button>
       </div>
     </div>
@@ -92,11 +96,16 @@ export default function TransactionLineItemsSection<
   showAddButton = true,
   addLineLabel = "Add Line",
   removeLineLabel = "Remove",
+  storageKey,
 }: TransactionLineItemsSectionProps<TLine, TContext, TKey>) {
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false);
-  const [selectedColumns, setSelectedColumns] = useState<TKey[]>(
-    defaultSelectedColumns,
-  );
+  const [selectedColumns, setSelectedColumns] = useState<TKey[]>(() => {
+    if (storageKey) {
+      const saved = loadColumnPrefs(storageKey);
+      if (saved && saved.length > 0) return saved as TKey[];
+    }
+    return defaultSelectedColumns;
+  });
   const [columnWidths, setColumnWidths] = useState(createDefaultColumnWidths);
   const [sortState, setSortState] = useState<{
     key: TKey;
@@ -222,13 +231,13 @@ export default function TransactionLineItemsSection<
             className="grid border-b border-gray-200 bg-gray-50 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:border-white/[0.05] dark:bg-white/[0.03] dark:text-gray-400"
             style={{ gridTemplateColumns }}
           >
-            <div className="flex items-center overflow-hidden px-3 py-3">
+            <div className="flex items-center overflow-hidden border-r border-gray-200 px-3 py-3 dark:border-white/[0.05]">
               <span className="block truncate">Row</span>
             </div>
             {visibleColumns.map((column) => (
               <div
                 key={column.key}
-                className="relative flex items-center overflow-hidden px-3 py-3"
+                className="relative flex items-center overflow-hidden border-r border-gray-200 px-3 py-3 dark:border-white/[0.05]"
               >
                 <button
                   type="button"
@@ -309,16 +318,19 @@ export default function TransactionLineItemsSection<
                     disabled={isOnlySelected}
                     onChange={(event) => {
                       if (event.target.checked) {
-                        setSelectedColumns((current) => [
-                          ...current,
-                          column.key,
-                        ]);
+                        setSelectedColumns((current) => {
+                          const next = [...current, column.key];
+                          if (storageKey) saveColumnPrefs(storageKey, next);
+                          return next;
+                        });
                         return;
                       }
 
-                      setSelectedColumns((current) =>
-                        current.filter((key) => key !== column.key),
-                      );
+                      setSelectedColumns((current) => {
+                        const next = current.filter((key) => key !== column.key);
+                        if (storageKey) saveColumnPrefs(storageKey, next);
+                        return next;
+                      });
                     }}
                   />
                   <span>

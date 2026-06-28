@@ -6,6 +6,8 @@ import {
   useGetCategoriesQuery,
   useUpdateCategoryMutation,
 } from "@/redux/api/categoryApi";
+import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import CodeInput from "@/shared/components/form/CodeInput";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import Button from "@/shared/components/ui/button/Button";
@@ -19,6 +21,7 @@ export default function CategoryForm({ category, onClose }: CategoryFormProps) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [parentCategoryId, setParentCategoryId] = useState("");
+  const [parentCategoryLabel, setParentCategoryLabel] = useState("");
   const [status, setStatus] = useState<CategoryStatus>("Active");
   const [formError, setFormError] = useState("");
   const { data: categories = [] } = useGetCategoriesQuery();
@@ -29,6 +32,11 @@ export default function CategoryForm({ category, onClose }: CategoryFormProps) {
     setCode(category?.code ?? "");
     setName(category?.name ?? "");
     setParentCategoryId(category?.parentCategoryId ?? "");
+    setParentCategoryLabel(
+      category?.parentCategoryId
+        ? (categories.find((c) => c.id === category.parentCategoryId)?.name ?? "")
+        : ""
+    );
     setStatus(category?.status ?? "Active");
     setFormError("");
   }, [category]);
@@ -87,13 +95,13 @@ export default function CategoryForm({ category, onClose }: CategoryFormProps) {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-          <Label>
-            Code<span className="text-error-500">*</span>
-          </Label>
-          <Input
+          <CodeInput
+            entity="category"
+            label="Code"
+            required
             value={code}
-            onChange={(event) => setCode(event.target.value)}
-            placeholder="RAW"
+            onChange={setCode}
+            placeholder="CAT-001"
           />
         </div>
         <div>
@@ -124,18 +132,29 @@ export default function CategoryForm({ category, onClose }: CategoryFormProps) {
 
       <div>
         <Label>Parent Category</Label>
-        <select
-          value={parentCategoryId}
-          onChange={(event) => setParentCategoryId(event.target.value)}
-          className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
-        >
-          <option value="">Select a parent category</option>
-          {availableParents.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
+        <AutocompleteSelect<Category, Category[]>
+          value={parentCategoryLabel}
+          placeholder="Search parent category"
+          search={(keyword) =>
+            availableParents.filter((c) =>
+              c.name.toLowerCase().includes(keyword.toLowerCase()) ||
+              c.code.toLowerCase().includes(keyword.toLowerCase())
+            )
+          }
+          getItems={(result) => result}
+          getOptionKey={(item) => item.id}
+          getOptionLabel={(item) => `${item.code} - ${item.name}`}
+          onInputChange={(value) => {
+            if (!value.trim()) {
+              setParentCategoryId("");
+              setParentCategoryLabel("");
+            }
+          }}
+          onSelect={(item) => {
+            setParentCategoryId(item?.id ?? "");
+            setParentCategoryLabel(item ? `${item.code} - ${item.name}` : "");
+          }}
+        />
       </div>
 
       {formError ? <p className="text-sm text-error-500">{formError}</p> : null}

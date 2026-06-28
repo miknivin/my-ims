@@ -31,6 +31,7 @@ export default function LineItemsSection() {
       })}
       onAddLine={addLine}
       onRemoveLine={(line) => removeLine(line.rowId)}
+      storageKey="sales-invoice-lines"
       columnPickerDescription="Choose the product, tax, warehouse, and profitability columns this sales invoice needs without changing the shared transaction line-item behavior."
     />
   );

@@ -90,6 +90,8 @@ export interface Customer {
   ledgerId: string | null;
   ledgerCode: string | null;
   ledgerName: string | null;
+  ledgerGroupId: string | null;
+  ledgerGroupName: string | null;
   contact: CustomerContact;
   billingAddress: CustomerBillingAddress;
   shippingAddresses: CustomerShippingAddress[];
@@ -105,7 +107,7 @@ export interface Customer {
 
 export interface CustomerPayload {
   basicDetails: CustomerBasicDetails;
-  ledgerId: string | null;
+  ledgerGroupId: string;
   contact: CustomerContact;
   billingAddress: CustomerBillingAddress;
   shippingAddresses: Array<Omit<CustomerShippingAddress, "id">>;
@@ -126,6 +128,8 @@ export interface CustomerListItem {
   ledgerId: string | null;
   ledgerCode: string | null;
   ledgerName: string | null;
+  ledgerGroupId: string | null;
+  ledgerGroupName: string | null;
   contact: CustomerContact;
   financials: CustomerFinancials;
   salesAndPricing: CustomerSalesAndPricing;

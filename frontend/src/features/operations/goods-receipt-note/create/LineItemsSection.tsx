@@ -40,6 +40,7 @@ export default function LineItemsSection() {
       onAddLine={addLine}
       onRemoveLine={(line) => removeLine(line.rowId)}
       sectionTitle="Line Items"
+      storageKey="goods-receipt-lines"
       columnPickerDescription="Choose the GRN line columns you want to work with while keeping the shared transaction table behavior consistent."
     />
   );

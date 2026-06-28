@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { useLazySearchLookupQuery } from "@/redux/api/lookupApi";
 import { useGetSalesRegisterQuery } from "@/redux/api/salesRegisterReportApi";
+import DateRangePicker, {
+  DateRangeValue,
+} from "@/shared/components/form/DateRangePicker";
 import PaginationControls from "@/shared/components/filtering/PaginationControls";
 import Button from "@/shared/components/ui/button/Button";
 import { TopDrawer } from "@/shared/components/ui/top-drawer";
@@ -59,8 +62,7 @@ export default function SalesRegisterPage() {
   const activeFilterCount = useMemo(() => {
     return [
       appliedFilters.keyword,
-      appliedFilters.fromDate,
-      appliedFilters.toDate,
+      appliedFilters.fromDate || appliedFilters.toDate,
       appliedFilters.status,
       appliedFilters.customerId,
     ].filter(Boolean).length;
@@ -84,6 +86,12 @@ export default function SalesRegisterPage() {
     setIsFilterOpen(true);
   };
 
+  const handleDateRangeChange = (range: DateRangeValue) => {
+    setAppliedFilters((current) => ({ ...current, ...range }));
+    setDraftFilters((current) => ({ ...current, ...range }));
+    setPage(1);
+  };
+
   const handleLimitChange = (nextLimit: number) => {
     setLimit(nextLimit);
     setPage(1);
@@ -95,6 +103,14 @@ export default function SalesRegisterPage() {
 
       <ReportLayout.Header className="sm:justify-end">
         <ReportLayout.Actions>
+          <DateRangePicker
+            value={{
+              fromDate: appliedFilters.fromDate,
+              toDate: appliedFilters.toDate,
+            }}
+            onChange={handleDateRangeChange}
+            className="w-full sm:w-80"
+          />
           <Button type="button" variant="outline" onClick={handleOpenFilters}>
             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
           </Button>

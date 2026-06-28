@@ -33,6 +33,7 @@ export default function LineItemsSection() {
       })}
       onAddLine={addLine}
       onRemoveLine={(line) => removeLine(line.rowId)}
+      storageKey="sales-order-lines"
       columnPickerDescription="Core pricing and fulfillment columns are preselected. Add the extra inventory and tax columns only when this sales order needs them."
     />
   );

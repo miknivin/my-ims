@@ -39,6 +39,20 @@ export default function JournalEntryFilterForm({
   onClear,
   searchLedgers,
 }: JournalEntryFilterFormProps) {
+  const handleFromDateChange = (fromDate: string) => {
+    onChange({
+      fromDate,
+      toDate: values.toDate && fromDate && fromDate > values.toDate ? fromDate : values.toDate,
+    });
+  };
+
+  const handleToDateChange = (toDate: string) => {
+    onChange({
+      fromDate: values.fromDate && toDate && toDate < values.fromDate ? toDate : values.fromDate,
+      toDate,
+    });
+  };
+
   return (
     <form
       className="space-y-5"
@@ -62,7 +76,8 @@ export default function JournalEntryFilterForm({
           <input
             type="date"
             value={values.fromDate}
-            onChange={(event) => onChange({ fromDate: event.target.value })}
+            max={values.toDate || undefined}
+            onChange={(event) => handleFromDateChange(event.target.value)}
             className={inputClass}
           />
         </Field>
@@ -71,7 +86,8 @@ export default function JournalEntryFilterForm({
           <input
             type="date"
             value={values.toDate}
-            onChange={(event) => onChange({ toDate: event.target.value })}
+            min={values.fromDate || undefined}
+            onChange={(event) => handleToDateChange(event.target.value)}
             className={inputClass}
           />
         </Field>

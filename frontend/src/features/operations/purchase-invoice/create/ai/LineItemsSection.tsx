@@ -31,6 +31,7 @@ export default function LineItemsSection() {
       })}
       onAddLine={addLine}
       onRemoveLine={(line) => removeLine(line.rowId)}
+      storageKey="purchase-invoice-lines"
       columnPickerDescription="Choose the costing, pricing, tax, and warehouse columns this purchase invoice needs without changing the shared transaction table behavior."
     />
   );

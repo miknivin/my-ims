@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
+import { Plus } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 import { ChevronDownIcon } from "@/shared/icons";
 import { useSidebar } from "@/shared/providers/SidebarContext";
 import {
@@ -61,19 +63,43 @@ const AppSidebar: React.FC = () => {
           const hasChildren = Boolean(leaf.items?.length);
 
           if (!hasChildren && leaf.path) {
+            const active = isActive(leaf.path);
+            const tooltipId = `sidebar-create-tip-${leaf.path.replace(/\//g, "-")}`;
             return (
-              <Link
+              <div
                 key={leaf.path}
-                to={leaf.path}
-                onClick={toggleMobileSidebar}
-                className={`block rounded-lg px-3 py-2 text-sm transition ${
-                  isActive(leaf.path)
-                    ? "bg-brand-50 text-brand-600 dark:bg-brand-900/20"
-                    : "text-gray-700 hover:bg-white dark:text-gray-300 dark:hover:bg-gray-700"
+                className={`flex items-center rounded-lg transition ${
+                  active
+                    ? "bg-brand-50 dark:bg-brand-900/20"
+                    : "hover:bg-white dark:hover:bg-gray-700"
                 }`}
               >
-                {leaf.name}
-              </Link>
+                <Link
+                  to={leaf.path}
+                  onClick={toggleMobileSidebar}
+                  className={`flex-1 px-3 py-2 text-sm ${
+                    active
+                      ? "text-brand-600"
+                      : "text-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {leaf.name}
+                </Link>
+                {leaf.createPath ? (
+                  <>
+                    <Link
+                      to={leaf.createPath}
+                      onClick={toggleMobileSidebar}
+                      data-tooltip-id={tooltipId}
+                      data-tooltip-content={`New ${leaf.name}`}
+                      className="mr-1.5 rounded bg-brand-500 p-1 text-white transition hover:bg-brand-600"
+                    >
+                      <Plus size={12} />
+                    </Link>
+                    <Tooltip id={tooltipId} place="right" positionStrategy="fixed" />
+                  </>
+                ) : null}
+              </div>
             );
           }
 

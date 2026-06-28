@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Warehouse, WarehouseStatus, useCreateWarehouseMutation, useUpdateWarehouseMutation } from "@/redux/api/warehouseApi";
+import CodeInput from "@/shared/components/form/CodeInput";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import TextArea from "@/shared/components/form/input/TextArea";
@@ -81,11 +82,10 @@ export default function WarehouseForm({
       </div>
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-          <Label>Code</Label>
-          <Input value={code} onChange={(event) => setCode(event.target.value)} placeholder="WH001" />
+          <CodeInput entity="warehouse" label="Code" required value={code} onChange={setCode} placeholder="WH001" />
         </div>
         <div>
-          <Label>Name</Label>
+          <Label>Name<span className="text-error-500">*</span></Label>
           <Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Main Warehouse" />
         </div>
         <div>

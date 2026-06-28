@@ -1,9 +1,11 @@
+﻿import { useState } from "react";
 import {
   Uom,
   useDeleteUomMutation,
   useGetUomsQuery,
   useUpdateUomMutation,
 } from "@/redux/api/uomApi";
+import DeleteAlert from "@/shared/components/ui/alert/DeleteAlert";
 import MasterTableActions from "./shared/MasterTableActions";
 import {
   Table,
@@ -21,6 +23,7 @@ export default function UomTable({ onEdit }: UomTableProps) {
   const { data: uoms = [], isLoading, isError } = useGetUomsQuery();
   const [updateUom, { isLoading: isUpdating }] = useUpdateUomMutation();
   const [deleteUom, { isLoading: isDeleting }] = useDeleteUomMutation();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleToggle = async (uom: Uom) => {
     await updateUom({
@@ -31,14 +34,6 @@ export default function UomTable({ onEdit }: UomTableProps) {
     }).unwrap();
   };
 
-  const handleDelete = async (uom: Uom) => {
-    const shouldDelete = window.confirm(`Delete UOM "${uom.name}"?`);
-    if (!shouldDelete) {
-      return;
-    }
-
-    await deleteUom(uom.id).unwrap();
-  };
 
   if (isLoading) {
     return (
@@ -118,7 +113,7 @@ export default function UomTable({ onEdit }: UomTableProps) {
                     <MasterTableActions
                       isDeleting={isDeleting}
                       onEdit={() => onEdit(uom)}
-                      onDelete={() => void handleDelete(uom)}
+                      onDelete={() => setDeleteTarget({ id: uom.id, name: uom.name })}
                     />
                   </TableCell>
                 </TableRow>
@@ -132,6 +127,11 @@ export default function UomTable({ onEdit }: UomTableProps) {
           No UOM records yet. Use "Add +" to create the first one.
         </div>
       ) : null}
+      <DeleteAlert
+        open={!!deleteTarget}
+        name={deleteTarget?.name ?? ""}        onConfirm={async () => { await deleteUom(deleteTarget!.id).unwrap(); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

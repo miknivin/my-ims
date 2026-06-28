@@ -1,7 +1,9 @@
+﻿import { useState } from "react";
 import {
   VendorListItem,
   useDeleteVendorMutation,
 } from "@/redux/api/vendorApi";
+import DeleteAlert from "@/shared/components/ui/alert/DeleteAlert";
 import MasterTableActions from "./shared/MasterTableActions";
 import {
   Table,
@@ -20,15 +22,7 @@ interface VendorTableProps {
 
 export default function VendorTable({ vendors, isLoading, isError, onEdit }: VendorTableProps) {
   const [deleteVendor, { isLoading: isDeleting }] = useDeleteVendorMutation();
-
-  const handleDelete = async (vendor: VendorListItem) => {
-    const shouldDelete = window.confirm(`Delete vendor "${vendor.basicInfo.name}"?`);
-    if (!shouldDelete) {
-      return;
-    }
-
-    await deleteVendor(vendor.id).unwrap();
-  };
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -124,7 +118,7 @@ export default function VendorTable({ vendors, isLoading, isError, onEdit }: Ven
                     <MasterTableActions
                       isDeleting={isDeleting}
                       onEdit={() => onEdit(vendor)}
-                      onDelete={() => void handleDelete(vendor)}
+                      onDelete={() => setDeleteTarget({ id: vendor.id, name: vendor.basicInfo.name })}
                     />
                   </TableCell>
                 </TableRow>
@@ -138,6 +132,11 @@ export default function VendorTable({ vendors, isLoading, isError, onEdit }: Ven
           No vendor records yet. Use "Add +" to create the first one.
         </div>
       ) : null}
+      <DeleteAlert
+        open={!!deleteTarget}
+        name={deleteTarget?.name ?? ""}        onConfirm={async () => { await deleteVendor(deleteTarget!.id).unwrap(); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

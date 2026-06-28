@@ -1,10 +1,13 @@
+﻿import { useState } from "react";
 import { Warehouse, useDeleteWarehouseMutation, useGetWarehousesQuery } from "@/redux/api/warehouseApi";
+import DeleteAlert from "@/shared/components/ui/alert/DeleteAlert";
 import MasterTableActions from "./shared/MasterTableActions";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/shared/components/ui/table";
 
 export default function WarehouseTable({ onEdit }: { onEdit: (warehouse: Warehouse) => void }) {
   const { data: warehouses = [], isLoading, isError } = useGetWarehousesQuery();
   const [deleteWarehouse, { isLoading: isDeleting }] = useDeleteWarehouseMutation();
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (isLoading) {
     return <div className="flex justify-center p-6 text-gray-500 dark:text-gray-400">Loading warehouses...</div>;
@@ -43,11 +46,7 @@ export default function WarehouseTable({ onEdit }: { onEdit: (warehouse: Warehou
                     <MasterTableActions
                       isDeleting={isDeleting}
                       onEdit={() => onEdit(warehouse)}
-                      onDelete={() => {
-                        if (window.confirm(`Delete warehouse "${warehouse.name}"?`)) {
-                          void deleteWarehouse(warehouse.id).unwrap();
-                        }
-                      }}
+                      onDelete={() => setDeleteTarget({ id: warehouse.id, name: warehouse.name })}
                     />
                   </TableCell>
                 </TableRow>
@@ -57,6 +56,11 @@ export default function WarehouseTable({ onEdit }: { onEdit: (warehouse: Warehou
         </div>
       </div>
       {warehouses.length === 0 ? <div className="border-t border-gray-100 px-5 py-6 text-sm text-gray-500 dark:border-white/[0.05] dark:text-gray-400">No warehouse records yet. Use "Add +" to create the first one.</div> : null}
+      <DeleteAlert
+        open={!!deleteTarget}
+        name={deleteTarget?.name ?? ""}        onConfirm={async () => { await deleteWarehouse(deleteTarget!.id).unwrap(); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

@@ -37,6 +37,7 @@ export default function LineItemsSection() {
       onRemoveLine={(line) => removeLine(line.rowId)}
       showAddButton={false}
       sectionTitle="Line Items"
+      storageKey="sales-adjustment-lines"
       columnPickerDescription="Choose the quantity, tax, warehouse, and value columns this sales adjustment note needs while keeping source-linked line rows intact."
     />
   );

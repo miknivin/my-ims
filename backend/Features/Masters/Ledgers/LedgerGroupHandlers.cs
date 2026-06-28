@@ -1,4 +1,6 @@
+using backend.Infrastructure.Filtering;
 using backend.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Masters.Ledgers;
@@ -6,18 +8,17 @@ namespace backend.Features.Masters.Ledgers;
 internal static class LedgerGroupHandlers
 {
     internal static async Task<IResult> GetAllAsync(
+        [AsParameters] LedgerGroupFilterRequest request,
         AppDbContext dbContext,
         CancellationToken cancellationToken)
     {
-        var groups = await dbContext.LedgerGroups
-            .Include(current => current.ParentGroup)
-            .OrderBy(current => current.Name)
-            .ToListAsync(cancellationToken);
+        var handler = new GetLedgerGroupsQueryHandler(dbContext, new LedgerGroupSortRegistry());
+        var groups = await handler.HandleAsync(request, cancellationToken);
 
-        return TypedResults.Ok(new ApiResponse<IReadOnlyList<LedgerGroupDto>>(
+        return TypedResults.Ok(new ApiResponse<PagedResponse<LedgerGroupDto>>(
             true,
             "Ledger groups fetched successfully.",
-            groups.Select(LedgerGroupDto.FromEntity).ToList()));
+            groups));
     }
 
     internal static async Task<IResult> GetByIdAsync(

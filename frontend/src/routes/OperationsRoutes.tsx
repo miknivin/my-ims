@@ -25,6 +25,7 @@ import BillWiseReceiptFormPage from "@/features/operations/bill-wise-receipt/cre
 import BillWiseReceiptListPage from "@/features/operations/bill-wise-receipt/BillWiseReceiptListPage";
 import JournalEntryListPage from "@/features/operations/accounting/journal-entries/JournalEntryListPage";
 import JournalVoucherListPage from "@/features/operations/accounting/journal-vouchers/JournalVoucherListPage";
+import JournalVoucherViewPage from "@/features/operations/accounting/journal-vouchers/JournalVoucherViewPage";
 import MastersPlaceholder from "@/features/masters/pages/Masters/MastersPlaceholder";
 
 export const operationsRoutes = (
@@ -95,6 +96,7 @@ export const operationsRoutes = (
     </Route>
     <Route path="accounting/journal-vouchers">
       <Route index element={<JournalVoucherListPage />} />
+      <Route path=":id" element={<JournalVoucherViewPage />} />
     </Route>
     <Route path="accounting/journal-entries">
       <Route index element={<JournalEntryListPage />} />

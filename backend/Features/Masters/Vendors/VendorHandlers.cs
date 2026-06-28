@@ -91,10 +91,10 @@ internal static class VendorHandlers
             UpdatedAtUtc = now
         };
 
-        var ledgerConflict = await HasLedgerConflictAsync(ledger.Code, ledger.Name, null, dbContext, cancellationToken);
-        if (ledgerConflict)
+        var createConflictMessage = await CheckLedgerConflictAsync(ledger.Code, ledger.Name, null, dbContext, cancellationToken);
+        if (createConflictMessage is not null)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "A ledger with this vendor code or name already exists.", null));
+            return TypedResults.Conflict(new ApiResponse<object>(false, createConflictMessage, null));
         }
 
         var vendor = new Vendor
@@ -127,6 +127,14 @@ internal static class VendorHandlers
 
         dbContext.Ledgers.Add(ledger);
         dbContext.Vendors.Add(vendor);
+
+        if (vendor.OpeningBalance is not null)
+        {
+            var journalError = await VendorOpeningBalanceJournalPosting.PreparePostAsync(dbContext, vendor, cancellationToken);
+            if (journalError is not null)
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -201,16 +209,16 @@ internal static class VendorHandlers
         }
 
         var effectiveLedgerId = currentLedger?.Id;
-        var ledgerConflict = await HasLedgerConflictAsync(
+        var updateConflictMessage = await CheckLedgerConflictAsync(
             buildResult.BasicInfo.Code,
             buildResult.BasicInfo.Name,
             effectiveLedgerId,
             dbContext,
             cancellationToken);
 
-        if (ledgerConflict)
+        if (updateConflictMessage is not null)
         {
-            return TypedResults.Conflict(new ApiResponse<object>(false, "A ledger with this vendor code or name already exists.", null));
+            return TypedResults.Conflict(new ApiResponse<object>(false, updateConflictMessage, null));
         }
 
         var ledgerNow = DateTime.UtcNow;
@@ -261,6 +269,8 @@ internal static class VendorHandlers
         vendor.Status = buildResult.Status;
         vendor.UpdatedAtUtc = DateTime.UtcNow;
 
+        var hadPreviousOb = vendor.OpeningBalance is not null;
+
         if (buildResult.OpeningBalance is null)
         {
             if (vendor.OpeningBalance is not null)
@@ -290,6 +300,10 @@ internal static class VendorHandlers
             vendor.OpeningBalance.UpdatedAtUtc = DateTime.UtcNow;
         }
 
+        var journalUpdateError = await VendorOpeningBalanceJournalPosting.PrepareUpdateAsync(dbContext, vendor, hadPreviousOb, cancellationToken);
+        if (journalUpdateError is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, journalUpdateError, null));
+
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
@@ -306,11 +320,28 @@ internal static class VendorHandlers
     {
         var vendor = await dbContext.Vendors
             .Include(current => current.OpeningBalance)
+            .Include(current => current.Ledger)
             .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
 
         if (vendor is null)
         {
             return TypedResults.NotFound(new ApiResponse<object>(false, "Vendor not found.", null));
+        }
+
+        if (vendor.Ledger is not null)
+        {
+            var hasJournalEntries = await dbContext.JournalEntries
+                .AnyAsync(current => current.LedgerId == vendor.Ledger.Id, cancellationToken);
+
+            if (hasJournalEntries)
+            {
+                vendor.Ledger.Status = LedgerStatuses.Deleted;
+                vendor.Ledger.UpdatedAtUtc = DateTime.UtcNow;
+            }
+            else
+            {
+                dbContext.Ledgers.Remove(vendor.Ledger);
+            }
         }
 
         dbContext.Vendors.Remove(vendor);
@@ -572,18 +603,23 @@ internal static class VendorHandlers
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private static async Task<bool> HasLedgerConflictAsync(
+    private static async Task<string?> CheckLedgerConflictAsync(
         string code,
         string name,
         Guid? excludeLedgerId,
         AppDbContext dbContext,
         CancellationToken cancellationToken)
     {
-        return await dbContext.Ledgers.AnyAsync(
-            current =>
-                current.Id != excludeLedgerId &&
-                (current.Code == code || current.Name == name),
-            cancellationToken);
+        var conflict = await dbContext.Ledgers
+            .Where(current => current.Id != excludeLedgerId && (current.Code == code || current.Name == name))
+            .Select(current => new { current.Status })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (conflict is null) return null;
+
+        return conflict.Status == LedgerStatuses.Deleted
+            ? "A ledger with this code or name was previously deleted. Codes cannot be reused."
+            : "A ledger with this vendor code or name already exists.";
     }
 }
 

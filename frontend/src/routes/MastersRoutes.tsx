@@ -10,6 +10,7 @@ import Masters from "@/features/masters/pages/Masters/Masters";
 import MastersPlaceholder from "@/features/masters/pages/Masters/MastersPlaceholder";
 import ProductFormPage from "@/features/masters/pages/Masters/ProductFormPage";
 import ProductMaster from "@/features/masters/pages/Masters/ProductMaster";
+import TaxFormPage from "@/features/masters/pages/Masters/TaxFormPage";
 import TaxMaster from "@/features/masters/pages/Masters/TaxMaster";
 import UomMaster from "@/features/masters/pages/Masters/UomMaster";
 import VendorMaster from "@/features/masters/pages/Masters/VendorMaster";
@@ -35,6 +36,8 @@ export const mastersRoutes = (
     <Route path="warehouse" element={<WarehouseMaster />} />
     <Route path="category" element={<CategoryMaster />} />
     <Route path="tax" element={<TaxMaster />} />
+    <Route path="tax/new" element={<TaxFormPage />} />
+    <Route path="tax/:taxId/edit" element={<TaxFormPage />} />
     <Route path="price-discount" element={<DiscountMaster />} />
     <Route
       path="users"

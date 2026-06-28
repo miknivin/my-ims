@@ -41,6 +41,7 @@ export default function LineItemsSection() {
       })}
       onAddLine={addLine}
       onRemoveLine={(line) => removeLine(line.rowId)}
+      storageKey="purchase-order-lines"
       columnPickerDescription="Essential columns are preselected. Add the extra tax, tracking, and reference columns only when this PO needs them."
     />
   );

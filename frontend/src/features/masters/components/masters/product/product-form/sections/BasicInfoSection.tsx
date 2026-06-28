@@ -6,6 +6,7 @@ import {
 } from "@/redux/api/lookupApi";
 import { LookupOption } from "@/shared/types/filtering";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import CodeInput from "@/shared/components/form/CodeInput";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import { useProductForm } from "../ProductFormContext";
@@ -31,8 +32,14 @@ export default function BasicInfoSection() {
     <SectionCard title="Basic Product Info">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="mb-2">
-          <Label>Code</Label>
-          <Input value={state.basicInfo.code} onChange={(event) => setSection("basicInfo", { code: event.target.value })} placeholder="PRD001" />
+          <CodeInput
+            entity="product"
+            label="Code"
+            required
+            value={state.basicInfo.code}
+            onChange={(value) => setSection("basicInfo", { code: value })}
+            placeholder="PROD-001"
+          />
         </div>
         <div className="mb-2">
           <Label>Name</Label>

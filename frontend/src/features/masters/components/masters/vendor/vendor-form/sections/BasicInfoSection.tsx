@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { LedgerGroup, useGetLedgerGroupsQuery } from "@/redux/api/ledgerGroupApi";
 import { VendorStatus } from "@/redux/api/vendorApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import CodeInput from "@/shared/components/form/CodeInput";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import { useVendorForm } from "../VendorFormContext";
@@ -9,7 +10,8 @@ import SectionCard from "../SectionCard";
 
 export default function BasicInfoSection({ currentLedgerGroupId }: { currentLedgerGroupId?: string | null }) {
   const { state, setBasicInfo } = useVendorForm();
-  const { data: ledgerGroups = [] } = useGetLedgerGroupsQuery();
+  const { data: response } = useGetLedgerGroupsQuery({ limit: 100 });
+  const ledgerGroups = response?.items ?? [];
 
   const availableLedgerGroups = ledgerGroups.filter(
     (item) =>
@@ -29,12 +31,12 @@ export default function BasicInfoSection({ currentLedgerGroupId }: { currentLedg
     <SectionCard title="Basic Info">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="mb-2">
-          <Label>
-            Code<span className="text-error-500">*</span>
-          </Label>
-          <Input
+          <CodeInput
+            entity="vendor"
+            label="Code"
+            required
             value={state.basicInfo.code}
-            onChange={(event) => setBasicInfo({ code: event.target.value })}
+            onChange={(value) => setBasicInfo({ code: value })}
             placeholder="VEND001"
           />
         </div>
@@ -46,14 +48,6 @@ export default function BasicInfoSection({ currentLedgerGroupId }: { currentLedg
             value={state.basicInfo.name}
             onChange={(event) => setBasicInfo({ name: event.target.value })}
             placeholder="ABC Supplies"
-          />
-        </div>
-        <div className="mb-2">
-          <Label>Under</Label>
-          <Input
-            value={state.basicInfo.under}
-            onChange={(event) => setBasicInfo({ under: event.target.value })}
-            placeholder="Sundry Creditors"
           />
         </div>
         <div className="mb-2">

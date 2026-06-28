@@ -10,6 +10,7 @@ type SearchResult<TResult> =
 
 interface AutocompleteSelectProps<TItem, TResult> {
   value?: string;
+  selectedKey?: string | null;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -47,6 +48,7 @@ async function resolveSearchResult<TResult>(
 
 export default function AutocompleteSelect<TItem, TResult>({
   value = "",
+  selectedKey,
   placeholder = "Search...",
   disabled = false,
   className = "",
@@ -66,35 +68,49 @@ export default function AutocompleteSelect<TItem, TResult>({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLUListElement | null>(null);
   const requestIdRef = useRef(0);
   const searchRef = useRef(search);
   const getItemsRef = useRef(getItems);
   const skipNextSearchRef = useRef(false);
   const selectedLabelRef = useRef<string | null>(null);
   const suppressSearchUntilInputChangeRef = useRef(false);
+  const externalValueRef = useRef(true);
 
   useEffect(() => {
     searchRef.current = search;
     getItemsRef.current = getItems;
   }, [getItems, search]);
 
+  // Reset highlight when options change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [options]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex < 0 || !listRef.current) return;
+    const item = listRef.current.children[highlightedIndex] as HTMLElement | undefined;
+    item?.scrollIntoView({ block: "nearest" });
+  }, [highlightedIndex]);
+
   useEffect(() => {
     setInputValue((current) => {
-      if (current === value) {
-        return current;
-      }
-
-      if (selectedLabelRef.current !== value) {
+      if (current === value) return current;
+      // current !== value → parent changed value externally (edit load, reset).
+      // Mark as externally set so search stays suppressed until user types.
+      externalValueRef.current = true;
+      if (selectedKey === undefined && selectedLabelRef.current !== value) {
         selectedLabelRef.current = null;
       }
-
       return value;
     });
-  }, [value]);
+  }, [value, selectedKey]);
 
   const updateDropdownPosition = () => {
     if (!inputRef.current) return;
@@ -104,7 +120,7 @@ export default function AutocompleteSelect<TItem, TResult>({
       top: rect.bottom + 8,
       left: rect.left,
       width: rect.width,
-      zIndex: 9999,
+      zIndex: 999999,
     });
   };
 
@@ -139,10 +155,12 @@ export default function AutocompleteSelect<TItem, TResult>({
       skipNextSearchRef.current = false;
       return;
     }
-    if (
-      suppressSearchUntilInputChangeRef.current ||
-      selectedLabelRef.current === inputValue
-    ) {
+    // Confirmed check: externally-set value, selectedKey prop, or ref-based legacy logic.
+    const isConfirmed = externalValueRef.current ||
+      (selectedKey !== undefined
+        ? Boolean(selectedKey)
+        : suppressSearchUntilInputChangeRef.current || selectedLabelRef.current === inputValue);
+    if (isConfirmed) {
       setOptions((current) => (current.length === 0 ? current : []));
       setIsOpen(false);
       setIsLoading(false);
@@ -177,7 +195,7 @@ export default function AutocompleteSelect<TItem, TResult>({
       }
     }, debounceMs);
     return () => window.clearTimeout(timer);
-  }, [debounceMs, disabled, inputValue, minChars]);
+  }, [debounceMs, disabled, inputValue, minChars, selectedKey]);
 
   const inputClasses = useMemo(
     () =>
@@ -190,6 +208,7 @@ export default function AutocompleteSelect<TItem, TResult>({
   );
 
   const handleChange = (nextValue: string) => {
+    externalValueRef.current = false;
     suppressSearchUntilInputChangeRef.current = false;
     selectedLabelRef.current = null;
     setInputValue(nextValue);
@@ -200,6 +219,7 @@ export default function AutocompleteSelect<TItem, TResult>({
   const handleSelect = (item: TItem) => {
     const label = getOptionLabel(item);
     requestIdRef.current += 1;
+    externalValueRef.current = false;
     suppressSearchUntilInputChangeRef.current = true;
     selectedLabelRef.current = label;
     skipNextSearchRef.current = true;
@@ -209,6 +229,28 @@ export default function AutocompleteSelect<TItem, TResult>({
     setIsOpen(false);
     setOptions([]);
     inputRef.current?.blur();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isOpen || options.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((current) =>
+        current < options.length - 1 ? current + 1 : 0,
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((current) =>
+        current > 0 ? current - 1 : options.length - 1,
+      );
+    } else if (e.key === "Enter" && highlightedIndex >= 0) {
+      e.preventDefault();
+      handleSelect(options[highlightedIndex]);
+    } else if (e.key === "Escape") {
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+    }
   };
 
   const trimmedInputValue = inputValue.trim();
@@ -224,8 +266,8 @@ export default function AutocompleteSelect<TItem, TResult>({
           Searching...
         </div>
       ) : options.length > 0 ? (
-        <ul className="max-h-72 overflow-y-auto py-2">
-          {options.map((item) => (
+        <ul ref={listRef} className="max-h-72 overflow-y-auto py-2">
+          {options.map((item, index) => (
             <li key={getOptionKey(item)}>
               <button
                 type="button"
@@ -233,7 +275,12 @@ export default function AutocompleteSelect<TItem, TResult>({
                   e.preventDefault();
                   handleSelect(item);
                 }}
-                className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-white/[0.06]"
+                onMouseEnter={() => setHighlightedIndex(index)}
+                className={`block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition dark:text-gray-200 ${
+                  index === highlightedIndex
+                    ? "bg-gray-100 dark:bg-white/[0.06]"
+                    : "hover:bg-gray-100 dark:hover:bg-white/[0.06]"
+                }`}
               >
                 {getOptionLabel(item)}
               </button>
@@ -296,12 +343,13 @@ export default function AutocompleteSelect<TItem, TResult>({
         disabled={disabled}
         autoComplete="off"
         onChange={(e) => handleChange(e.target.value)}
+        onKeyDown={handleKeyDown}
         onFocus={() => {
-          if (
-            options.length > 0 &&
-            !suppressSearchUntilInputChangeRef.current &&
-            selectedLabelRef.current !== inputValue
-          ) {
+          const isConfirmed = externalValueRef.current ||
+            (selectedKey !== undefined
+              ? Boolean(selectedKey)
+              : suppressSearchUntilInputChangeRef.current || selectedLabelRef.current === inputValue);
+          if (options.length > 0 && !isConfirmed) {
             updateDropdownPosition();
             setIsOpen(true);
           }

@@ -1,8 +1,10 @@
+﻿import { useState } from "react";
 import {
   LedgerGroup,
   useDeleteLedgerGroupMutation,
   useGetLedgerGroupsQuery,
 } from "@/redux/api/ledgerGroupApi";
+import DeleteAlert from "@/shared/components/ui/alert/DeleteAlert";
 import MasterTableActions from "./shared/MasterTableActions";
 import {
   Table,
@@ -17,17 +19,10 @@ interface LedgerGroupTableProps {
 }
 
 export default function LedgerGroupTable({ onEdit }: LedgerGroupTableProps) {
-  const { data: ledgerGroups = [], isLoading, isError } = useGetLedgerGroupsQuery();
+  const { data: response, isLoading, isError } = useGetLedgerGroupsQuery({ limit: 100 });
+  const ledgerGroups = response?.items ?? [];
   const [deleteLedgerGroup, { isLoading: isDeleting }] = useDeleteLedgerGroupMutation();
-
-  const handleDelete = async (ledgerGroup: LedgerGroup) => {
-    const shouldDelete = window.confirm(`Delete ledger group "${ledgerGroup.name}"?`);
-    if (!shouldDelete) {
-      return;
-    }
-
-    await deleteLedgerGroup(ledgerGroup.id).unwrap();
-  };
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -109,7 +104,7 @@ export default function LedgerGroupTable({ onEdit }: LedgerGroupTableProps) {
                       }}
                       onDelete={() => {
                         if (!ledgerGroup.isSystem) {
-                          void handleDelete(ledgerGroup);
+                          setDeleteTarget({ id: ledgerGroup.id, name: ledgerGroup.name });
                         }
                       }}
                     />
@@ -125,6 +120,11 @@ export default function LedgerGroupTable({ onEdit }: LedgerGroupTableProps) {
           No ledger groups yet. Use "Add +" to create the first one.
         </div>
       ) : null}
+      <DeleteAlert
+        open={!!deleteTarget}
+        name={deleteTarget?.name ?? ""}        onConfirm={async () => { await deleteLedgerGroup(deleteTarget!.id).unwrap(); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

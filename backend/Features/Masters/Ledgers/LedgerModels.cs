@@ -6,7 +6,9 @@ public static class LedgerStatuses
 {
     public const string Active = "Active";
     public const string Inactive = "Inactive";
+    public const string Deleted = "Deleted";
 
+    // Deleted is intentionally excluded — it can only be set via the delete endpoint
     public static readonly string[] All = [Active, Inactive];
 }
 

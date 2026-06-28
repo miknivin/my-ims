@@ -56,6 +56,11 @@ internal static class TaxHandlers
             return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
         }
 
+        if (HasOverlappingSlabs(buildResult.Slabs))
+        {
+            return TypedResults.BadRequest(new ApiResponse<object>(false, "Slab ranges must not overlap.", null));
+        }
+
         var duplicateExists = await dbContext.Taxes.AnyAsync(
             tax => tax.Code == buildResult.Code || tax.Name == buildResult.Name,
             cancellationToken);
@@ -113,6 +118,11 @@ internal static class TaxHandlers
         if (buildResult.Error is not null)
         {
             return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
+        }
+
+        if (HasOverlappingSlabs(buildResult.Slabs))
+        {
+            return TypedResults.BadRequest(new ApiResponse<object>(false, "Slab ranges must not overlap.", null));
         }
 
         var tax = await dbContext.Taxes
@@ -284,6 +294,17 @@ internal static class TaxHandlers
             normalizedRate,
             normalizedSlabs,
             normalizedStatus);
+    }
+
+    private static bool HasOverlappingSlabs(IReadOnlyList<TaxSlabRequest> slabs)
+    {
+        var sorted = slabs.OrderBy(s => s.FromAmount).ToList();
+        for (var i = 1; i < sorted.Count; i++)
+        {
+            if (sorted[i].FromAmount <= sorted[i - 1].ToAmount)
+                return true;
+        }
+        return false;
     }
 
     private sealed record TaxRequestBuildResult(

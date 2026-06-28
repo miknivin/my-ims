@@ -3,7 +3,6 @@ import { BalanceType, Vendor, VendorPayload, VendorStatus } from "@/redux/api/ve
 export interface VendorBasicInfoFormState {
   code: string;
   name: string;
-  under: string;
   status: VendorStatus;
   ledgerGroupId: string;
 }
@@ -23,7 +22,6 @@ export interface VendorCreditAndFinanceFormState {
   creditLimit: string;
   dueDays: string;
   currencyId: string;
-  paymentTerms: string;
   remark: string;
 }
 
@@ -62,7 +60,6 @@ export const createVendorFormState = (vendor?: Vendor | null): VendorFormState =
   basicInfo: {
     code: vendor?.basicInfo.code ?? "",
     name: vendor?.basicInfo.name ?? "",
-    under: vendor?.basicInfo.under ?? "",
     status: vendor?.status ?? "Active",
     ledgerGroupId: vendor?.ledgerGroupId ?? "",
   },
@@ -80,7 +77,6 @@ export const createVendorFormState = (vendor?: Vendor | null): VendorFormState =
     creditLimit: vendor?.creditAndFinance.creditLimit?.toString() ?? "",
     dueDays: vendor?.creditAndFinance.dueDays?.toString() ?? "",
     currencyId: vendor?.creditAndFinance.currencyId ?? "",
-    paymentTerms: vendor?.creditAndFinance.paymentTerms ?? "",
     remark: vendor?.creditAndFinance.remark ?? "",
   },
   taxAndCompliance: {
@@ -106,7 +102,7 @@ export const toVendorPayload = (state: VendorFormState): VendorPayload => ({
   basicInfo: {
     code: state.basicInfo.code.trim().toUpperCase(),
     name: state.basicInfo.name.trim(),
-    under: state.basicInfo.under.trim() || null,
+    under: null,
   },
   addressAndContact: {
     contactName: state.addressAndContact.contactName.trim() || null,
@@ -126,7 +122,6 @@ export const toVendorPayload = (state: VendorFormState): VendorPayload => ({
       ? Number(state.creditAndFinance.dueDays)
       : null,
     currencyId: state.creditAndFinance.currencyId || null,
-    paymentTerms: state.creditAndFinance.paymentTerms.trim() || null,
     remark: state.creditAndFinance.remark.trim() || null,
   },
   taxAndCompliance: {

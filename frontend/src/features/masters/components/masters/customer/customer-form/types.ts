@@ -38,8 +38,8 @@ export interface CustomerFormState {
     name: string;
     alias: string;
     customerType: CustomerType;
-    category: string;
-    ledgerId: string;
+    ledgerGroupId: string;
+    ledgerGroupLabel: string;
     status: CustomerStatus;
   };
   contact: {
@@ -104,8 +104,8 @@ export const createCustomerFormState = (customer?: Customer | null): CustomerFor
     name: customer?.basicDetails.name ?? "",
     alias: customer?.basicDetails.alias ?? "",
     customerType: customer?.basicDetails.customerType ?? "Regular",
-    category: customer?.basicDetails.category ?? "",
-    ledgerId: customer?.ledgerId ?? "",
+    ledgerGroupId: customer?.ledgerGroupId ?? "",
+    ledgerGroupLabel: customer?.ledgerGroupName ?? "",
     status: customer?.status ?? "Active",
   },
   contact: {
@@ -171,9 +171,9 @@ export const toCustomerPayload = (state: CustomerFormState): CustomerPayload => 
     name: state.basicDetails.name.trim(),
     alias: state.basicDetails.alias.trim() || null,
     customerType: state.basicDetails.customerType,
-    category: state.basicDetails.category.trim() || null,
+    category: null,
   },
-  ledgerId: state.basicDetails.ledgerId || null,
+  ledgerGroupId: state.basicDetails.ledgerGroupId,
   contact: {
     phone: state.contact.phone.trim() || null,
     mobile: state.contact.mobile.trim() || null,

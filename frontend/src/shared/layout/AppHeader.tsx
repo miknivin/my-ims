@@ -11,6 +11,8 @@ import { ThemeToggleButton } from "@/shared/components/common/ThemeToggleButton"
 import NotificationDropdown from "@/shared/components/header/NotificationDropdown";
 import UserDropdown from "@/shared/components/header/UserDropdown";
 import { useDropdownPosition } from "@/shared/hooks/useDropdownPosition";
+import { Plus } from "lucide-react";
+import { Tooltip } from "react-tooltip";
 import { ChevronDownIcon } from "@/shared/icons";
 import { useSidebar } from "@/shared/providers/SidebarContext";
 import {
@@ -160,18 +162,41 @@ function DesktopNavItem({
           const isFlyoutOpen = openLeafKeys[parentKey] === leafKey;
 
           if (!hasChildren && leaf.path) {
+            const active = isPathActive(leaf.path);
+            const tooltipId = `create-tip-${leaf.path.replace(/\//g, "-")}`;
             return (
-              <Link
+              <div
                 key={leaf.path}
-                to={leaf.path}
-                className={`block rounded-lg px-3 py-2 text-sm transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 ${
-                  isPathActive(leaf.path)
-                    ? "bg-brand-50 text-brand-600 dark:bg-brand-900/20"
-                    : "text-gray-700 dark:text-gray-300"
+                className={`flex items-center rounded-lg transition-colors ${
+                  active
+                    ? "bg-brand-50 dark:bg-brand-900/20"
+                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
                 }`}
               >
-                {leaf.name}
-              </Link>
+                <Link
+                  to={leaf.path}
+                  className={`flex-1 px-3 py-2 text-sm ${
+                    active
+                      ? "text-brand-600"
+                      : "text-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {leaf.name}
+                </Link>
+                {leaf.createPath ? (
+                  <>
+                    <Link
+                      to={leaf.createPath}
+                      data-tooltip-id={tooltipId}
+                      data-tooltip-content={`New ${leaf.name}`}
+                      className="mr-1.5 rounded bg-brand-500 p-1 text-white transition hover:bg-brand-600"
+                    >
+                      <Plus size={12} />
+                    </Link>
+                    <Tooltip id={tooltipId} place="right" positionStrategy="fixed" />
+                  </>
+                ) : null}
+              </div>
             );
           }
 

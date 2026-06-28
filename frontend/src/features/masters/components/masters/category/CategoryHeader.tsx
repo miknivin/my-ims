@@ -6,7 +6,7 @@ interface CategoryHeaderProps {
 
 export default function CategoryHeader({ onAdd }: CategoryHeaderProps) {
   return (
-    <div className="my-5 flex flex-end w-full flex-col items-start justify-between gap-2 lg:flex-row lg:items-center lg:gap-0">
+    <div className="my-5 flex flex-end w-full flex-col items-start justify-end gap-2 lg:flex-row lg:items-center lg:gap-0">
       {/* <h3 className="text-start text-lg font-semibold text-gray-800 dark:text-white/90">
         Category Master
       </h3> */}

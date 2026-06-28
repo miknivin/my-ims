@@ -56,6 +56,11 @@ export const taxApi = createApi({
       transformResponse: (response: ApiResponse<Tax[]>) => response.data,
       providesTags: ["Tax"],
     }),
+    getTaxById: builder.query<Tax, string>({
+      query: (id) => `/${id}`,
+      transformResponse: (response: ApiResponse<Tax>) => response.data,
+      providesTags: ["Tax"],
+    }),
     createTax: builder.mutation<Tax, TaxPayload>({
       query: (body) => ({
         url: "/",
@@ -86,6 +91,7 @@ export const taxApi = createApi({
 
 export const {
   useGetTaxesQuery,
+  useGetTaxByIdQuery,
   useCreateTaxMutation,
   useUpdateTaxMutation,
   useDeleteTaxMutation,

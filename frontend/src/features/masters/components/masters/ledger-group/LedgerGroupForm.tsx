@@ -1,13 +1,14 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   LedgerGroup,
   LedgerGroupNature,
   LedgerGroupStatus,
   useCreateLedgerGroupMutation,
-  useGetLedgerGroupsQuery,
+  useLazyGetLedgerGroupsQuery,
   useUpdateLedgerGroupMutation,
 } from "@/redux/api/ledgerGroupApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import CodeInput from "@/shared/components/form/CodeInput";
 import Label from "@/shared/components/form/Label";
 import Input from "@/shared/components/form/input/InputField";
 import Button from "@/shared/components/ui/button/Button";
@@ -24,9 +25,10 @@ export default function LedgerGroupForm({ ledgerGroup, onClose }: LedgerGroupFor
   const [name, setName] = useState("");
   const [nature, setNature] = useState<LedgerGroupNature>("Asset");
   const [parentGroupId, setParentGroupId] = useState("");
+  const [parentGroupLabel, setParentGroupLabel] = useState("");
   const [status, setStatus] = useState<LedgerGroupStatus>("Active");
   const [formError, setFormError] = useState("");
-  const { data: ledgerGroups = [] } = useGetLedgerGroupsQuery();
+  const [searchGroups] = useLazyGetLedgerGroupsQuery();
   const [createLedgerGroup, { isLoading: isCreating }] = useCreateLedgerGroupMutation();
   const [updateLedgerGroup, { isLoading: isUpdating }] = useUpdateLedgerGroupMutation();
 
@@ -35,22 +37,10 @@ export default function LedgerGroupForm({ ledgerGroup, onClose }: LedgerGroupFor
     setName(ledgerGroup?.name ?? "");
     setNature(ledgerGroup?.nature ?? "Asset");
     setParentGroupId(ledgerGroup?.parentGroupId ?? "");
+    setParentGroupLabel(ledgerGroup?.parentGroupName ?? "");
     setStatus(ledgerGroup?.status ?? "Active");
     setFormError("");
   }, [ledgerGroup]);
-
-  const availableParents = useMemo(
-    () =>
-      ledgerGroups.filter(
-        (item) => item.id !== ledgerGroup?.id && item.nature === nature
-      ),
-    [ledgerGroups, ledgerGroup?.id, nature]
-  );
-
-  const selectedParentLabel = useMemo(() => {
-    const selectedParent = availableParents.find((item) => item.id === parentGroupId);
-    return selectedParent ? `${selectedParent.code} - ${selectedParent.name}` : "";
-  }, [availableParents, parentGroupId]);
 
   const isLoading = isCreating || isUpdating;
 
@@ -102,12 +92,12 @@ export default function LedgerGroupForm({ ledgerGroup, onClose }: LedgerGroupFor
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div>
-          <Label>
-            Code<span className="text-error-500">*</span>
-          </Label>
-          <Input
+          <CodeInput
+            entity="ledger-group"
+            label="Code"
+            required
             value={code}
-            onChange={(event) => setCode(event.target.value)}
+            onChange={setCode}
             placeholder="CASH"
           />
         </div>
@@ -146,6 +136,7 @@ export default function LedgerGroupForm({ ledgerGroup, onClose }: LedgerGroupFor
             onChange={(event) => {
               setNature(event.target.value as LedgerGroupNature);
               setParentGroupId("");
+              setParentGroupLabel("");
             }}
             className="h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90 dark:focus:border-brand-800"
           >
@@ -161,33 +152,26 @@ export default function LedgerGroupForm({ ledgerGroup, onClose }: LedgerGroupFor
       <div>
         <Label>Parent Group</Label>
         <AutocompleteSelect<LedgerGroup, LedgerGroup[]>
-          value={selectedParentLabel}
+          value={parentGroupLabel}
           placeholder="Search parent ledger group"
-          search={(keyword) => {
-            const normalizedKeyword = keyword.trim().toLowerCase();
-
-            return availableParents
-              .filter((item) => {
-                if (!normalizedKeyword) {
-                  return true;
-                }
-
-                return (
-                  item.code.toLowerCase().includes(normalizedKeyword) ||
-                  item.name.toLowerCase().includes(normalizedKeyword)
-                );
-              })
-              .slice(0, 10);
-          }}
+          search={(keyword) =>
+            searchGroups({ keyword, nature, limit: 10 }).unwrap().then((result) =>
+              result.items.filter((item) => item.id !== ledgerGroup?.id)
+            )
+          }
           getItems={(result) => result}
           getOptionKey={(item) => item.id}
           getOptionLabel={(item) => `${item.code} - ${item.name}`}
           onInputChange={(value) => {
             if (!value.trim()) {
               setParentGroupId("");
+              setParentGroupLabel("");
             }
           }}
-          onSelect={(item) => setParentGroupId(item?.id ?? "")}
+          onSelect={(item) => {
+            setParentGroupId(item?.id ?? "");
+            setParentGroupLabel(item ? `${item.code} - ${item.name}` : "");
+          }}
         />
       </div>
 

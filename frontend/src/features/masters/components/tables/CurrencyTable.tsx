@@ -1,8 +1,10 @@
+﻿import { useState } from "react";
 import {
   Currency,
   useDeleteCurrencyMutation,
   useGetCurrenciesQuery,
 } from "@/redux/api/currencyApi";
+import DeleteAlert from "@/shared/components/ui/alert/DeleteAlert";
 import MasterTableActions from "./shared/MasterTableActions";
 import {
   Table,
@@ -19,15 +21,7 @@ interface CurrencyTableProps {
 export default function CurrencyTable({ onEdit }: CurrencyTableProps) {
   const { data: currencies = [], isLoading, isError } = useGetCurrenciesQuery();
   const [deleteCurrency, { isLoading: isDeleting }] = useDeleteCurrencyMutation();
-
-  const handleDelete = async (currency: Currency) => {
-    const shouldDelete = window.confirm(`Delete currency "${currency.name}"?`);
-    if (!shouldDelete) {
-      return;
-    }
-
-    await deleteCurrency(currency.id).unwrap();
-  };
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   if (isLoading) {
     return (
@@ -97,7 +91,7 @@ export default function CurrencyTable({ onEdit }: CurrencyTableProps) {
                     <MasterTableActions
                       isDeleting={isDeleting}
                       onEdit={() => onEdit(currency)}
-                      onDelete={() => void handleDelete(currency)}
+                      onDelete={() => setDeleteTarget({ id: currency.id, name: currency.name })}
                     />
                   </TableCell>
                 </TableRow>
@@ -111,6 +105,11 @@ export default function CurrencyTable({ onEdit }: CurrencyTableProps) {
           No currency records yet. Use "Add +" to create the first one.
         </div>
       ) : null}
+      <DeleteAlert
+        open={!!deleteTarget}
+        name={deleteTarget?.name ?? ""}        onConfirm={async () => { await deleteCurrency(deleteTarget!.id).unwrap(); setDeleteTarget(null); }}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

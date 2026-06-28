@@ -48,7 +48,8 @@ export default function QuickCreateVendorForm({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [formError, setFormError] = useState("");
-  const { data: ledgerGroups = [] } = useGetLedgerGroupsQuery();
+  const { data: ledgerGroupsResponse } = useGetLedgerGroupsQuery({ limit: 100 });
+  const ledgerGroups = ledgerGroupsResponse?.items ?? [];
   const [createVendor, { isLoading }] = useCreateVendorMutation();
 
   const selectedLedgerGroupLabel = useMemo(() => {
