@@ -1,8 +1,10 @@
-import { useLazyGetVendorByIdQuery } from "@/redux/api/vendorApi";
+import { useState } from "react";
+import { useLazyGetVendorByIdQuery, Vendor } from "@/redux/api/vendorApi";
 import { useLazySearchLookupQuery } from "@/redux/api/lookupApi";
 import { LookupOption } from "@/shared/types/filtering";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
 import TransactionSectionCard from "@/features/operations/shared/TransactionSectionCard";
+import QuickAddVendorModal from "@/shared/components/quick-add/QuickAddVendorModal";
 import { useGoodsReceiptForm } from "../GoodsReceiptFormContext";
 
 const inputClass =
@@ -15,8 +17,20 @@ export default function VendorInformationSection() {
   const { state, setVendorInformation } = useGoodsReceiptForm();
   const [searchLookup] = useLazySearchLookupQuery();
   const [getVendorById] = useLazyGetVendorByIdQuery();
+  const [quickAdd, setQuickAdd] = useState({ open: false, keyword: "" });
+
+  const hydrateVendor = (vendor: Vendor) => {
+    setVendorInformation({
+      vendorId: vendor.id,
+      vendorLabel: vendor.basicInfo.name,
+      address: vendor.addressAndContact.address ?? "",
+      attention: vendor.addressAndContact.contactName ?? "",
+      phone: vendor.addressAndContact.phone ?? "",
+    });
+  };
 
   return (
+    <>
     <TransactionSectionCard title="Vendor Information">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
@@ -46,17 +60,12 @@ export default function VendorInformationSection() {
 
               try {
                 const vendor = await getVendorById(item.id).unwrap();
-                setVendorInformation({
-                  vendorId: vendor.id,
-                  vendorLabel: vendor.basicInfo.name,
-                  address: vendor.addressAndContact.address ?? "",
-                  attention: vendor.addressAndContact.contactName ?? "",
-                  phone: vendor.addressAndContact.phone ?? "",
-                });
+                hydrateVendor(vendor);
               } catch {
                 // Keep the selected vendor label if detail hydration fails.
               }
             }}
+            onNoMatchClick={(kw) => setQuickAdd({ open: true, keyword: kw })}
           />
         </div>
 
@@ -98,5 +107,15 @@ export default function VendorInformationSection() {
         </div>
       </div>
     </TransactionSectionCard>
+    <QuickAddVendorModal
+      open={quickAdd.open}
+      keyword={quickAdd.keyword}
+      onClose={() => setQuickAdd({ open: false, keyword: "" })}
+      onSuccess={(vendor) => {
+        hydrateVendor(vendor);
+        setQuickAdd({ open: false, keyword: "" });
+      }}
+    />
+    </>
   );
 }

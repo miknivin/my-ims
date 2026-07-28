@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { Modal } from "@/shared/components/ui/modal";
 import Button from "@/shared/components/ui/button/Button";
 import TransactionSectionCard from "./TransactionSectionCard";
 import { TransactionLineColumnDefinition } from "./transactionLineItems";
 import { loadColumnPrefs, saveColumnPrefs } from "./columnPreferences";
 
-const ACTION_COLUMN_WIDTH = 100;
-const INDEX_COLUMN_WIDTH = 80;
+const ACTION_COLUMN_WIDTH = 90;
+const INDEX_COLUMN_WIDTH = 55;
 
 interface TransactionLineItemsSectionProps<
   TLine,
@@ -58,7 +58,10 @@ function TransactionLineItemRow<TLine, TContext, TKey extends string = string>({
       </div>
 
       {columns.map((column) => (
-        <div key={column.key} className="overflow-hidden border-r border-gray-100 px-1 py-2 dark:border-white/[0.05]">
+        <div
+          key={column.key}
+          className="overflow-hidden border-r border-gray-100 px-1 py-2 dark:border-white/[0.05]"
+        >
           {column.renderCell(getCellContext(line))}
         </div>
       ))}
@@ -102,7 +105,14 @@ export default function TransactionLineItemsSection<
   const [selectedColumns, setSelectedColumns] = useState<TKey[]>(() => {
     if (storageKey) {
       const saved = loadColumnPrefs(storageKey);
-      if (saved && saved.length > 0) return saved as TKey[];
+      if (saved && saved.selected.length > 0) {
+        // Only auto-add columns that are new (not known when prefs were last saved)
+        // and are default-selected. Never re-add columns the user explicitly removed.
+        const newDefaults = defaultSelectedColumns.filter(
+          (k) => !saved.known.includes(k as string),
+        );
+        return [...saved.selected, ...newDefaults] as TKey[];
+      }
     }
     return defaultSelectedColumns;
   });
@@ -199,10 +209,14 @@ export default function TransactionLineItemsSection<
 
   const getSortIndicator = (key: TKey) => {
     if (!sortState || sortState.key !== key) {
-      return "<>";
+      return <span className="text-[11px] text-gray-400">↕</span>;
     }
 
-    return sortState.direction === "asc" ? "^" : "v";
+    return sortState.direction === "asc" ? (
+      <span className="text-[11px] text-brand-500">↑</span>
+    ) : (
+      <span className="text-[11px] text-brand-500">↓</span>
+    );
   };
 
   return (
@@ -245,7 +259,7 @@ export default function TransactionLineItemsSection<
                   className="flex min-w-0 items-center gap-1 overflow-hidden text-left transition hover:text-gray-700 dark:hover:text-white/90"
                 >
                   <span className="truncate">{column.label}</span>
-                  <span className="shrink-0 text-[10px]">
+                  <span className="shrink-0">
                     {getSortIndicator(column.key)}
                   </span>
                 </button>
@@ -289,70 +303,86 @@ export default function TransactionLineItemsSection<
       <Modal
         isOpen={isColumnModalOpen}
         onClose={() => setIsColumnModalOpen(false)}
-        className="max-h-[90vh] max-w-2xl overflow-y-auto p-6"
+        className="max-w-2xl"
+        showCloseButton={false}
       >
-        <div className="space-y-5">
-          <div>
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
-              {columnPickerTitle}
-            </h3>
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {columnPickerDescription}
-            </p>
+        <div className="flex max-h-[85vh] flex-col">
+          <div className="flex flex-shrink-0 items-start justify-between border-b border-gray-100 px-6 pb-4 pt-6 dark:border-white/[0.06]">
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+                {columnPickerTitle}
+              </h3>
+              {columnPickerDescription && (
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  {columnPickerDescription}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsColumnModalOpen(false)}
+              className="ml-4 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:hover:text-white"
+            >
+              <X size={18} />
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {columns.map((column) => {
-              const checked = selectedColumns.includes(column.key);
-              const isOnlySelected = checked && selectedColumns.length === 1;
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {columns.map((column) => {
+                const checked = selectedColumns.includes(column.key);
+                const isOnlySelected = checked && selectedColumns.length === 1;
 
-              return (
-                <label
-                  key={column.key}
-                  className="flex items-start gap-3 rounded-xl border border-gray-200 px-4 py-3 dark:border-white/[0.05]"
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                    checked={checked}
-                    disabled={isOnlySelected}
-                    onChange={(event) => {
-                      if (event.target.checked) {
+                return (
+                  <label
+                    key={column.key}
+                    className="flex items-start gap-3 rounded-xl border border-gray-200 px-4 py-3 dark:border-white/[0.05]"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                      checked={checked}
+                      disabled={isOnlySelected}
+                      onChange={(event) => {
+                        if (event.target.checked) {
+                          setSelectedColumns((current) => {
+                            const next = [...current, column.key];
+                            if (storageKey) saveColumnPrefs(storageKey, next, columns.map((c) => c.key as string));
+                            return next;
+                          });
+                          return;
+                        }
+
                         setSelectedColumns((current) => {
-                          const next = [...current, column.key];
-                          if (storageKey) saveColumnPrefs(storageKey, next);
+                          const next = current.filter(
+                            (key) => key !== column.key,
+                          );
+                          if (storageKey) saveColumnPrefs(storageKey, next, columns.map((c) => c.key as string));
                           return next;
                         });
-                        return;
-                      }
-
-                      setSelectedColumns((current) => {
-                        const next = current.filter((key) => key !== column.key);
-                        if (storageKey) saveColumnPrefs(storageKey, next);
-                        return next;
-                      });
-                    }}
-                  />
-                  <span>
-                    <span className="block text-sm font-medium text-gray-800 dark:text-white/90">
-                      {column.label}
+                      }}
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-gray-800 dark:text-white/90">
+                        {column.label}
+                      </span>
+                      <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
+                        {column.nature === "readonly"
+                          ? "Read-only"
+                          : column.nature === "lookup"
+                            ? "Lookup input"
+                            : column.nature === "select"
+                              ? "Select input"
+                              : "Editable input"}
+                      </span>
                     </span>
-                    <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-                      {column.nature === "readonly"
-                        ? "Read-only"
-                        : column.nature === "lookup"
-                          ? "Lookup input"
-                          : column.nature === "select"
-                            ? "Select input"
-                            : "Editable input"}
-                    </span>
-                  </span>
-                </label>
-              );
-            })}
+                  </label>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex flex-shrink-0 justify-end border-t border-gray-100 px-6 py-4 dark:border-white/[0.06]">
             <Button
               type="button"
               variant="outline"

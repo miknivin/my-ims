@@ -67,7 +67,8 @@ export const appNavItems: AppNavItem[] = [
       { name: "UOM Master", path: "/masters/uom" },
       { name: "Tax Master", path: "/masters/tax" },
       { name: "Discount Master", path: "/masters/price-discount" },
-      { name: "User / Role Master", path: "/masters/users" },
+      { name: "User Master", path: "/masters/users" },
+      { name: "Role Master", path: "/masters/roles" },
     ],
   },
   {
@@ -114,6 +115,11 @@ export const appNavItems: AppNavItem[] = [
             name: "Goods Receipt (GRN)",
             path: "/operations/goods-receipt-note",
             createPath: "/operations/goods-receipt-note/new",
+          },
+          {
+            name: "Delivery Note (DN)",
+            path: "/operations/delivery-note",
+            createPath: "/operations/delivery-note/new",
           },
           { name: "Stock Adjustment", path: "/operations/stock-adjustment" },
           { name: "Stock Transfer", path: "/operations/stock-transfer" },
@@ -262,8 +268,15 @@ export const masterCards: MasterCard[] = [
     ready: true,
   },
   {
-    title: "User / Role Master",
-    desc: "Manage user accounts, roles, and access permissions.",
+    title: "User Master",
+    desc: "Manage user accounts, login credentials, and assignments.",
     path: "/masters/users",
+    ready: true,
+  },
+  {
+    title: "Role Master",
+    desc: "Define roles and configure module-level access permissions.",
+    path: "/masters/roles",
+    ready: true,
   },
 ];

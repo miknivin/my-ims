@@ -24,12 +24,15 @@ export interface SalesInvoiceDocument {
   no: string;
   date: string;
   dueDate: string;
+  salespersonName: string | null;
 }
 
 export interface SalesInvoiceCustomerInformation {
   customerId: string;
   customerNameSnapshot: string;
   address: string;
+  customerGstinSnapshot: string | null;
+  shippingAddress: string | null;
 }
 
 export interface SalesInvoiceFinancialDetails {
@@ -130,11 +133,14 @@ export interface SalesInvoicePayload {
     no: string;
     date: string;
     dueDate: string;
+    salespersonName: string | null;
   };
   customerInformation: {
     customerId: string;
     customerNameSnapshot: string;
     address: string;
+    customerGstinSnapshot: string | null;
+    shippingAddress: string | null;
   };
   financialDetails: {
     paymentMode: SalesInvoicePaymentMode;
@@ -216,25 +222,38 @@ export const salesInvoiceApi = createApi({
         response.data,
       invalidatesTags: ["SalesInvoice"],
     }),
-    updateSalesInvoice: builder.mutation<
-      SalesInvoice,
-      SalesInvoicePayload & { id: string; status?: string | null }
-    >({
-      query: ({ id, ...body }) => ({
+    updateSalesInvoiceStatus: builder.mutation<SalesInvoice, { id: string; status: string }>({
+      query: ({ id, status }) => ({
         url: `/${id}`,
-        method: "PUT",
-        body,
+        method: "PATCH",
+        body: { status },
       }),
       transformResponse: (response: ApiResponse<SalesInvoice>) =>
         response.data,
       invalidatesTags: ["SalesInvoice"],
     }),
-    deleteSalesInvoice: builder.mutation<void, string>({
+    downloadSalesInvoicePdf: builder.mutation<string, string>({
       query: (id) => ({
-        url: `/${id}`,
-        method: "DELETE",
+        url: `/${id}/pdf`,
+        method: "GET",
+        responseHandler: async (response) => {
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        },
+        cache: "no-cache",
       }),
-      invalidatesTags: ["SalesInvoice"],
+    }),
+    previewSalesInvoicePdf: builder.mutation<string, SalesInvoicePayload>({
+      query: (body) => ({
+        url: "/preview-pdf",
+        method: "POST",
+        body,
+        responseHandler: async (response) => {
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        },
+        cache: "no-cache",
+      }),
     }),
   }),
 });
@@ -245,6 +264,7 @@ export const {
   useGetSalesInvoiceByIdQuery,
   useLazyGetSalesInvoiceByIdQuery,
   useCreateSalesInvoiceMutation,
-  useUpdateSalesInvoiceMutation,
-  useDeleteSalesInvoiceMutation,
+  useUpdateSalesInvoiceStatusMutation,
+  useDownloadSalesInvoicePdfMutation,
+  usePreviewSalesInvoicePdfMutation,
 } = salesInvoiceApi;

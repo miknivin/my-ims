@@ -193,6 +193,31 @@ internal static class PurchaseInvoiceHandlers
         return TypedResults.Ok(new ApiResponse<PurchaseInvoiceDto>(true, "Purchase invoice updated successfully.", PurchaseInvoiceDto.FromEntity(updated)));
     }
 
+    internal static async Task<IResult> DownloadPdfAsync(
+        Guid id,
+        PurchaseInvoicePdfService pdfService,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var purchaseInvoice = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+        if (purchaseInvoice is null)
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase invoice not found.", null));
+
+        var pdfBytes = await pdfService.GeneratePdfAsync(purchaseInvoice);
+        var fileName = $"PI-{purchaseInvoice.Document.No}.pdf";
+        return Results.File(pdfBytes, "application/pdf", fileName);
+    }
+
+    internal static async Task<IResult> PreviewPdfAsync(
+        CreatePurchaseInvoiceRequest request,
+        PurchaseInvoicePdfService pdfService,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await pdfService.GeneratePreviewPdfAsync(request, dbContext, cancellationToken);
+        return Results.File(pdfBytes, "application/pdf");
+    }
+
     private static PurchaseInvoiceBuildResult BuildPurchaseInvoiceRequest(
         PurchaseInvoiceSourceReferenceRequest sourceRefRequest,
         PurchaseInvoiceDocumentRequest documentRequest,

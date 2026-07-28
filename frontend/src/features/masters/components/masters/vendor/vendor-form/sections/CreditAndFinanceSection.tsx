@@ -44,15 +44,18 @@ export default function CreditAndFinanceSection() {
         <div className="mb-2 sm:col-span-2">
           <Label>Currency</Label>
           <AutocompleteSelect<Currency, Currency[]>
+            selectedKey={state.creditAndFinance.currencyId || null}
             value={selectedCurrencyLabel}
             placeholder="Search currency"
-            search={(keyword) =>
-              currencies.filter(
+            search={(keyword) => {
+              const lower = keyword.toLowerCase();
+              return currencies.filter(
                 (c) =>
-                  c.code.toLowerCase().includes(keyword.toLowerCase()) ||
-                  c.name.toLowerCase().includes(keyword.toLowerCase()),
-              )
-            }
+                  c.status === "Active" &&
+                  (c.code.toLowerCase().includes(lower) ||
+                    c.name.toLowerCase().includes(lower)),
+              );
+            }}
             getItems={(result) => result}
             getOptionKey={(item) => item.id}
             getOptionLabel={(item) => `${item.code} - ${item.name}`}

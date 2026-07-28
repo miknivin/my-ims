@@ -109,6 +109,7 @@ export default function PropertiesSection() {
           <div className="mb-2">
             <Label>Group</Label>
             <AutocompleteSelect<LookupOption, LookupOption[]>
+              selectedKey={state.categorization.groupCategoryId || null}
               value={resolvedLabels.groupCategoryId}
               placeholder="Search category"
               search={(keyword) =>
@@ -136,6 +137,7 @@ export default function PropertiesSection() {
           <div className="mb-2">
             <Label>Sub Group</Label>
             <AutocompleteSelect<LookupOption, LookupOption[]>
+              selectedKey={state.categorization.subGroupCategoryId || null}
               value={resolvedLabels.subGroupCategoryId}
               placeholder="Search sub-group"
               search={(keyword) =>
@@ -163,6 +165,7 @@ export default function PropertiesSection() {
           <div className="mb-2">
             <Label>Vendor</Label>
             <AutocompleteSelect<LookupOption, LookupOption[]>
+              selectedKey={state.categorization.vendorId || null}
               value={resolvedLabels.vendorId}
               placeholder="Search vendor"
               search={(keyword) =>

@@ -54,6 +54,7 @@ export default function BasicDetailsSection() {
         <div className="mb-2">
           <Label>Ledger Group<span className="text-error-500">*</span></Label>
           <AutocompleteSelect<LedgerGroup, LedgerGroup[]>
+            selectedKey={state.basicDetails.ledgerGroupId || null}
             value={state.basicDetails.ledgerGroupLabel}
             placeholder="Search asset ledger group"
             search={(keyword) =>

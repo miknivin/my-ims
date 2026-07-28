@@ -1,5 +1,7 @@
 import { Route } from "react-router";
 import OperationsPage from "@/features/operations/OperationsPage";
+import DeliveryNoteFormPage from "@/features/operations/delivery-note/create/DeliveryNoteFormPage";
+import DeliveryNoteListPage from "@/features/operations/delivery-note/DeliveryNoteListPage";
 import GoodsReceiptNoteFormPage from "@/features/operations/goods-receipt-note/create/GoodsReceiptNoteFormPage";
 import GoodsReceiptNoteListPage from "@/features/operations/goods-receipt-note/GoodsReceiptNoteListPage";
 import PurchaseInvoiceAiFormPage from "@/features/operations/purchase-invoice/create/ai/PurchaseInvoiceAiFormPage";
@@ -7,6 +9,7 @@ import PurchaseInvoiceFormPage from "@/features/operations/purchase-invoice/crea
 import PurchaseInvoiceListPage from "@/features/operations/purchase-invoice/PurchaseInvoiceListPage";
 import PurchaseOrderFormPage from "@/features/operations/purchase-order/create/PurchaseOrderFormPage";
 import PurchaseOrderListPage from "@/features/operations/purchase-order/PurchaseOrderListPage";
+import PurchaseOrderEditPage from "@/features/operations/purchase-order/PurchaseOrderEditPage";
 import SalesInvoiceFormPage from "@/features/operations/sales-invoice/create/SalesInvoiceFormPage";
 import SalesInvoiceListPage from "@/features/operations/sales-invoice/SalesInvoiceListPage";
 import SalesOrderFormPage from "@/features/operations/sales-order/create/SalesOrderFormPage";
@@ -34,6 +37,7 @@ export const operationsRoutes = (
     <Route path="purchase-order">
       <Route index element={<PurchaseOrderListPage />} />
       <Route path="new" element={<PurchaseOrderFormPage />} />
+      <Route path=":id/edit" element={<PurchaseOrderEditPage />} />
     </Route>
     <Route path="sales-order">
       <Route index element={<SalesOrderListPage />} />
@@ -51,6 +55,10 @@ export const operationsRoutes = (
     <Route path="goods-receipt-note">
       <Route index element={<GoodsReceiptNoteListPage />} />
       <Route path="new" element={<GoodsReceiptNoteFormPage />} />
+    </Route>
+    <Route path="delivery-note">
+      <Route index element={<DeliveryNoteListPage />} />
+      <Route path="new" element={<DeliveryNoteFormPage />} />
     </Route>
     <Route
       path="stock-adjustment"

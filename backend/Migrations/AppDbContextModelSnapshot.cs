@@ -215,6 +215,22 @@ namespace backend.Migrations
                     b.ToTable("roles", (string)null);
                 });
 
+            modelBuilder.Entity("backend.Features.Auth.RolePermissions", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PermissionsJson")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValue("{}");
+
+                    b.HasKey("RoleId");
+
+                    b.ToTable("role_permissions", (string)null);
+                });
+
             modelBuilder.Entity("backend.Features.Auth.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -282,6 +298,94 @@ namespace backend.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("backend.Features.Inventory.DeliveryNotes.DeliveryNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("delivery_notes", (string)null);
+                });
+
+            modelBuilder.Entity("backend.Features.Inventory.DeliveryNotes.DeliveryNoteItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DeliveryNoteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("GrossAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("HsnCode")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ProductNameSnapshot")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Quantity")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Rate")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("Remark")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("SalesOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SerialNo")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TaxableAmount")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Total")
+                        .HasColumnType("numeric");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveryNoteId");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("UnitId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.ToTable("DeliveryNoteItems");
                 });
 
             modelBuilder.Entity("backend.Features.Inventory.FifoLayer", b =>
@@ -2598,6 +2702,258 @@ namespace backend.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("backend.Features.Inventory.DeliveryNotes.DeliveryNote", b =>
+                {
+                    b.OwnsOne("backend.Features.Inventory.DeliveryNotes.DeliveryNoteCustomerInformation", "CustomerInformation", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryNoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Address")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("customer_address");
+
+                            b1.Property<string>("Attention")
+                                .HasMaxLength(150)
+                                .HasColumnType("character varying(150)")
+                                .HasColumnName("customer_attention");
+
+                            b1.Property<Guid>("CustomerId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("customer_id");
+
+                            b1.Property<string>("CustomerNameSnapshot")
+                                .IsRequired()
+                                .HasMaxLength(150)
+                                .HasColumnType("character varying(150)")
+                                .HasColumnName("customer_name_snapshot");
+
+                            b1.Property<string>("Phone")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("customer_phone");
+
+                            b1.Property<string>("ShippingAddress")
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("customer_shipping_address");
+
+                            b1.HasKey("DeliveryNoteId");
+
+                            b1.HasIndex("CustomerId");
+
+                            b1.ToTable("delivery_notes");
+
+                            b1.HasOne("backend.Features.Masters.Customers.Customer", "Customer")
+                                .WithMany()
+                                .HasForeignKey("CustomerId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryNoteId");
+
+                            b1.Navigation("Customer");
+                        });
+
+                    b.OwnsOne("backend.Features.Inventory.DeliveryNotes.DeliveryNoteDocument", "Document", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryNoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateOnly>("Date")
+                                .HasColumnType("date")
+                                .HasColumnName("date");
+
+                            b1.Property<DateOnly?>("ExpectedDeliveryDate")
+                                .HasColumnType("date")
+                                .HasColumnName("expected_delivery_date");
+
+                            b1.Property<string>("No")
+                                .IsRequired()
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("no");
+
+                            b1.Property<string>("VoucherType")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasColumnName("voucher_type");
+
+                            b1.HasKey("DeliveryNoteId");
+
+                            b1.HasIndex("No")
+                                .IsUnique();
+
+                            b1.ToTable("delivery_notes");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryNoteId");
+                        });
+
+                    b.OwnsOne("backend.Features.Inventory.DeliveryNotes.DeliveryNoteFooter", "Footer", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryNoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("NetTotal")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("net_total");
+
+                            b1.Property<decimal>("TotalAmount")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("total_amount");
+
+                            b1.Property<decimal>("TotalQty")
+                                .HasColumnType("numeric(18,2)")
+                                .HasColumnName("total_qty");
+
+                            b1.HasKey("DeliveryNoteId");
+
+                            b1.ToTable("delivery_notes");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryNoteId");
+                        });
+
+                    b.OwnsOne("backend.Features.Inventory.DeliveryNotes.DeliveryNoteGeneral", "General", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryNoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Notes")
+                                .HasMaxLength(2000)
+                                .HasColumnType("character varying(2000)")
+                                .HasColumnName("notes");
+
+                            b1.HasKey("DeliveryNoteId");
+
+                            b1.ToTable("delivery_notes");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryNoteId");
+                        });
+
+                    b.OwnsOne("backend.Features.Inventory.DeliveryNotes.DeliveryNoteLogistics", "Logistics", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryNoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateOnly?>("LrDate")
+                                .HasColumnType("date")
+                                .HasColumnName("lr_date");
+
+                            b1.Property<string>("LrNo")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("lr_no");
+
+                            b1.Property<string>("TransportMode")
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("transport_mode");
+
+                            b1.Property<string>("VehicleNo")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("vehicle_no");
+
+                            b1.HasKey("DeliveryNoteId");
+
+                            b1.ToTable("delivery_notes");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryNoteId");
+                        });
+
+                    b.OwnsOne("backend.Features.Inventory.DeliveryNotes.DeliveryNoteSourceReference", "SourceRef", b1 =>
+                        {
+                            b1.Property<Guid>("DeliveryNoteId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("DirectRefNo")
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("direct_ref_no");
+
+                            b1.Property<string>("Mode")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("character varying(40)")
+                                .HasColumnName("delivery_mode");
+
+                            b1.Property<Guid?>("SalesOrderId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("sales_order_id");
+
+                            b1.Property<string>("SalesOrderNo")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("sales_order_no");
+
+                            b1.HasKey("DeliveryNoteId");
+
+                            b1.ToTable("delivery_notes");
+
+                            b1.WithOwner()
+                                .HasForeignKey("DeliveryNoteId");
+                        });
+
+                    b.Navigation("CustomerInformation")
+                        .IsRequired();
+
+                    b.Navigation("Document")
+                        .IsRequired();
+
+                    b.Navigation("Footer")
+                        .IsRequired();
+
+                    b.Navigation("General")
+                        .IsRequired();
+
+                    b.Navigation("Logistics")
+                        .IsRequired();
+
+                    b.Navigation("SourceRef")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("backend.Features.Inventory.DeliveryNotes.DeliveryNoteItem", b =>
+                {
+                    b.HasOne("backend.Features.Inventory.DeliveryNotes.DeliveryNote", "DeliveryNote")
+                        .WithMany("Items")
+                        .HasForeignKey("DeliveryNoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("backend.Features.Masters.Products.Product", "Product")
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("backend.Features.Masters.Uoms.Uom", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("backend.Features.Masters.Warehouses.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId");
+
+                    b.Navigation("DeliveryNote");
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Unit");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("backend.Features.Inventory.FifoLayer", b =>
@@ -6772,6 +7128,11 @@ namespace backend.Migrations
                                 .HasColumnType("character varying(500)")
                                 .HasColumnName("customer_address");
 
+                            b1.Property<string>("CustomerGstinSnapshot")
+                                .HasMaxLength(50)
+                                .HasColumnType("character varying(50)")
+                                .HasColumnName("customer_gstin_snapshot");
+
                             b1.Property<Guid>("CustomerId")
                                 .HasColumnType("uuid")
                                 .HasColumnName("customer_id");
@@ -6781,6 +7142,11 @@ namespace backend.Migrations
                                 .HasMaxLength(150)
                                 .HasColumnType("character varying(150)")
                                 .HasColumnName("customer_name_snapshot");
+
+                            b1.Property<string>("ShippingAddress")
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("customer_shipping_address");
 
                             b1.HasKey("SalesInvoiceId");
 
@@ -6818,6 +7184,11 @@ namespace backend.Migrations
                                 .HasMaxLength(50)
                                 .HasColumnType("character varying(50)")
                                 .HasColumnName("no");
+
+                            b1.Property<string>("SalespersonName")
+                                .HasMaxLength(150)
+                                .HasColumnType("character varying(150)")
+                                .HasColumnName("salesperson_name");
 
                             b1.Property<string>("VoucherType")
                                 .IsRequired()
@@ -7448,6 +7819,11 @@ namespace backend.Migrations
             modelBuilder.Entity("backend.Features.Accounting.Journals.JournalVoucher", b =>
                 {
                     b.Navigation("Entries");
+                });
+
+            modelBuilder.Entity("backend.Features.Inventory.DeliveryNotes.DeliveryNote", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("backend.Features.Inventory.GoodsReceiptNotes.GoodsReceiptNote", b =>

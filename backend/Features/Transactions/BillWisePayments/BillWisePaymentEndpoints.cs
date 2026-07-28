@@ -4,7 +4,7 @@ public static class BillWisePaymentEndpoints
 {
     public static IEndpointRouteBuilder MapBillWisePaymentEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/transactions/bill-wise-payments").WithTags("Bill Wise Payments");
+        var group = app.MapGroup("/api/transactions/bill-wise-payments").WithTags("Bill Wise Payments").RequireAuthorization();
 
         group.MapGet("/", BillWisePaymentHandlers.GetAllAsync);
         group.MapGet("/outstanding-invoices", BillWisePaymentHandlers.GetOutstandingInvoicesAsync);

@@ -6,6 +6,8 @@ import { usePurchaseOrderForm } from "../PurchaseOrderFormContext";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
+const disabledClass =
+  "h-11 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 cursor-not-allowed";
 const labelClass = "mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 export default function FinancialDetailsSection() {
@@ -60,22 +62,20 @@ export default function FinancialDetailsSection() {
         <div>
           <label className={labelClass}>Credit Limit</label>
           <input
-            className={inputClass}
-            type="number"
-            min="0"
-            step="0.01"
+            className={disabledClass}
+            type="text"
             value={state.financialDetails.creditLimit}
-            onChange={(event) =>
-              setFinancialDetails({ creditLimit: event.target.value })
-            }
+            disabled
+            placeholder="Auto-filled from vendor"
           />
         </div>
         <div>
           <label className={labelClass}>Balance</label>
           <input
-            className={`${inputClass} bg-gray-100 dark:bg-gray-800`}
+            className={disabledClass}
             value={state.financialDetails.balance}
-            readOnly
+            disabled
+            placeholder="—"
           />
         </div>
       </div>

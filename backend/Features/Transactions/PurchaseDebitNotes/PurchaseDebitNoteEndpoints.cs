@@ -4,7 +4,7 @@ public static class PurchaseDebitNoteEndpoints
 {
     public static IEndpointRouteBuilder MapPurchaseDebitNoteEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/transactions/purchase-debit-notes").WithTags("Purchase Debit Notes");
+        var group = app.MapGroup("/api/transactions/purchase-debit-notes").WithTags("Purchase Debit Notes").RequireAuthorization();
 
         group.MapGet("/", PurchaseDebitNoteHandlers.GetAllAsync);
         group.MapGet("/{id:guid}", PurchaseDebitNoteHandlers.GetByIdAsync);

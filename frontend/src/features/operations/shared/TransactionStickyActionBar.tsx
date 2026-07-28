@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown, Download, FileText } from "lucide-react";
 import Button from "@/shared/components/ui/button/Button";
 
 interface TransactionStickyActionBarProps {
@@ -8,15 +9,93 @@ interface TransactionStickyActionBarProps {
   onDraft?: () => void;
   onReset: () => void;
   onCancel: () => void;
+  onPreview?: () => void;
+  isPreviewing?: boolean;
+  onDownload?: () => void;
+  isDownloading?: boolean;
+}
+
+function SplitSaveButton({
+  isSaving,
+  primaryLabel,
+  draftLabel = "Save as Draft",
+  onDraft,
+}: {
+  isSaving: boolean;
+  primaryLabel: string;
+  draftLabel?: string;
+  onDraft?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  if (!onDraft) {
+    return (
+      <Button className="min-w-32" disabled={isSaving}>
+        {isSaving ? "Saving..." : primaryLabel}
+      </Button>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative flex">
+      <Button
+        className="min-w-28 rounded-r-none border-r border-brand-600"
+        disabled={isSaving}
+      >
+        {isSaving ? "Saving..." : primaryLabel}
+      </Button>
+      <button
+        type="button"
+        disabled={isSaving}
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex items-center rounded-r-lg bg-brand-500 px-2 text-white transition hover:bg-brand-600 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+        aria-label="More save options"
+      >
+        <ChevronDown size={14} />
+      </button>
+
+      {open ? (
+        <div className="absolute bottom-full right-0 mb-1 min-w-[140px] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg dark:border-white/[0.08] dark:bg-gray-900">
+          <button
+            type="button"
+            disabled={isSaving}
+            onClick={() => {
+              setOpen(false);
+              onDraft();
+            }}
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/[0.05]"
+          >
+            {draftLabel}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function ActionButtons({
   isSaving,
   primaryLabel,
-  draftLabel = "Draft",
+  draftLabel,
   onDraft,
   onReset,
   onCancel,
+  onPreview,
+  isPreviewing,
+  onDownload,
+  isDownloading,
 }: TransactionStickyActionBarProps) {
   return (
     <>
@@ -26,39 +105,50 @@ function ActionButtons({
       <Button type="button" variant="outline" onClick={onReset}>
         Reset
       </Button>
-      {onDraft ? (
+      {onDownload ? (
         <Button
           type="button"
           variant="outline"
-          onClick={onDraft}
-          disabled={isSaving}
+          onClick={onDownload}
+          disabled={isDownloading}
         >
-          {isSaving ? "Saving..." : draftLabel}
+          <Download size={14} className="mr-1.5" />
+          {isDownloading ? "Downloading..." : "Download PDF"}
         </Button>
       ) : null}
-      <Button className="min-w-32" disabled={isSaving}>
-        {isSaving ? "Saving..." : primaryLabel}
-      </Button>
+      {onPreview ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onPreview}
+          disabled={isPreviewing}
+        >
+          <FileText size={14} className="mr-1.5" />
+          {isPreviewing ? "Generating..." : "Preview PDF"}
+        </Button>
+      ) : null}
+      <SplitSaveButton
+        isSaving={isSaving}
+        primaryLabel={primaryLabel}
+        draftLabel={draftLabel}
+        onDraft={onDraft}
+      />
     </>
   );
 }
 
 export default function TransactionStickyActionBar(
-  props: TransactionStickyActionBarProps
+  props: TransactionStickyActionBarProps,
 ) {
   const anchorRef = useRef<HTMLDivElement | null>(null);
   const [showSticky, setShowSticky] = useState(false);
 
   useEffect(() => {
-    if (!anchorRef.current) {
-      return;
-    }
-
+    if (!anchorRef.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => setShowSticky(!entry.isIntersecting),
-      { threshold: 1 }
+      { threshold: 1 },
     );
-
     observer.observe(anchorRef.current);
     return () => observer.disconnect();
   }, []);

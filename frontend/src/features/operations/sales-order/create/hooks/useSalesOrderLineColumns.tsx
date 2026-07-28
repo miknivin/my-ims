@@ -5,6 +5,7 @@ import {
   useLazyGetProductByIdQuery,
   useLazyGetProductsQuery,
 } from "@/redux/api/productApi";
+import { useQuickAddProductContext } from "@/shared/providers/QuickAddProductProvider";
 import { useLazyGetWarehousesQuery } from "@/redux/api/warehouseApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
 import {
@@ -73,6 +74,7 @@ export function useSalesOrderLineColumns(
   const [searchProducts] = useLazyGetProductsQuery();
   const [getProductById] = useLazyGetProductByIdQuery();
   const [searchWarehouses] = useLazyGetWarehousesQuery();
+  const { openProductQuickAdd } = useQuickAddProductContext();
 
   return useMemo<SalesOrderLineColumnDefinition[]>(() => {
     const sortAccessors: Record<
@@ -156,6 +158,19 @@ export function useSalesOrderLineColumns(
             } catch {
               // Keep the typed product label if detail hydration fails.
             }
+          }}
+          onNoMatchClick={(keyword) => {
+            openProductQuickAdd(keyword, (product) => {
+              onChange(line.rowId, {
+                productId: product.id,
+                productName: product.basicInfo.name,
+                hsnCode: product.stockAndMeasurement.hsn ?? "",
+                unitId: product.stockAndMeasurement.salesUomId,
+                unitName: product.stockAndMeasurement.salesUomName,
+                rate: `${getProductRate(product, rateLevel)}`,
+                mrp: `${product.pricingAndRates.mrp ?? 0}`,
+              });
+            });
           }}
         />
       ),

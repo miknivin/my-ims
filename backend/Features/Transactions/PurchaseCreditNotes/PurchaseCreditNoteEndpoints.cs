@@ -4,7 +4,7 @@ public static class PurchaseCreditNoteEndpoints
 {
     public static IEndpointRouteBuilder MapPurchaseCreditNoteEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/transactions/purchase-credit-notes").WithTags("Purchase Credit Notes");
+        var group = app.MapGroup("/api/transactions/purchase-credit-notes").WithTags("Purchase Credit Notes").RequireAuthorization();
 
         group.MapGet("/", PurchaseCreditNoteHandlers.GetAllAsync);
         group.MapGet("/{id:guid}", PurchaseCreditNoteHandlers.GetByIdAsync);

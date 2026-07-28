@@ -152,6 +152,7 @@ export default function LedgerGroupForm({ ledgerGroup, onClose }: LedgerGroupFor
       <div>
         <Label>Parent Group</Label>
         <AutocompleteSelect<LedgerGroup, LedgerGroup[]>
+          selectedKey={parentGroupId || null}
           value={parentGroupLabel}
           placeholder="Search parent ledger group"
           search={(keyword) =>

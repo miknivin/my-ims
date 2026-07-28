@@ -25,6 +25,7 @@ export default function SalesAndPricingSection() {
         <div className="mb-2">
           <Label>Default Tax</Label>
           <AutocompleteSelect<LookupOption, LookupOption[]>
+            selectedKey={state.salesAndPricing.defaultTaxId || null}
             value={selectedTaxLabel}
             placeholder="Search tax"
             search={(keyword) =>

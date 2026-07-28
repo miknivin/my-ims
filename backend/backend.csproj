@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <PreserveCompilationContext>true</PreserveCompilationContext>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,7 +15,23 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.11" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.5" />
+    <PackageReference Include="PuppeteerSharp" Version="20.0.2" />
+    <PackageReference Include="RazorLight" Version="2.3.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Features\Transactions\PurchaseOrders\PurchaseOrderPdfTemplate.cshtml" />
+    <EmbeddedResource Include="Features\Transactions\PurchaseOrders\PurchaseOrderPdfTemplate.cshtml" />
+    <Content Remove="Features\Inventory\GoodsReceiptNotes\GoodsReceiptNotePdfTemplate.cshtml" />
+    <EmbeddedResource Include="Features\Inventory\GoodsReceiptNotes\GoodsReceiptNotePdfTemplate.cshtml" />
+    <Content Remove="Features\Transactions\PurchaseInvoices\PurchaseInvoicePdfTemplate.cshtml" />
+    <EmbeddedResource Include="Features\Transactions\PurchaseInvoices\PurchaseInvoicePdfTemplate.cshtml" />
+    <Content Remove="Features\Transactions\SalesInvoices\SalesInvoicePdfTemplate.cshtml" />
+    <EmbeddedResource Include="Features\Transactions\SalesInvoices\SalesInvoicePdfTemplate.cshtml" />
+    <Content Remove="Features\Inventory\DeliveryNotes\DeliveryNotePdfTemplate.cshtml" />
+    <EmbeddedResource Include="Features\Inventory\DeliveryNotes\DeliveryNotePdfTemplate.cshtml" />
   </ItemGroup>
 
 </Project>

@@ -19,6 +19,7 @@ public static class LookupSources
     public const string Customers = "customers";
     public const string Vendors = "vendors";
     public const string Uoms = "uoms";
+    public const string Salespersons = "salespersons";
 }
 
 public sealed record LookupOptionDto(
@@ -66,6 +67,7 @@ internal static class LookupHandlers
             LookupSources.Customers => await SearchCustomersAsync(dbContext, keyword, limit, cancellationToken),
             LookupSources.Vendors => await SearchVendorsAsync(dbContext, keyword, limit, cancellationToken),
             LookupSources.Uoms => await SearchUomsAsync(dbContext, keyword, limit, cancellationToken),
+            LookupSources.Salespersons => await SearchSalespersonsAsync(dbContext, keyword, limit, cancellationToken),
             _ => null
         };
 
@@ -331,5 +333,30 @@ internal static class LookupHandlers
             .OrderBy(current => current.Name)
             .Select(current => new LookupOptionDto(current.Id, current.Name, current.Code))
             .ToListAsync(cancellationToken);
+
+    private static async Task<IReadOnlyList<LookupOptionDto>> SearchSalespersonsAsync(
+        AppDbContext dbContext,
+        string? keyword,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Users
+            .AsNoTracking()
+            .Where(u => u.IsActive && u.Role.Name == "Sales Person");
+
+        if (!string.IsNullOrWhiteSpace(keyword))
+        {
+            var pattern = $"%{keyword}%";
+            query = query.Where(u =>
+                EF.Functions.ILike(u.Name, pattern) ||
+                EF.Functions.ILike(u.Email, pattern));
+        }
+
+        return await query
+            .OrderBy(u => u.Name)
+            .Take(limit)
+            .Select(u => new LookupOptionDto(u.Id, u.Name, u.Email))
+            .ToListAsync(cancellationToken);
+    }
 }
 

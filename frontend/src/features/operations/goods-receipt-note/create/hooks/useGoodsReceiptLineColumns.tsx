@@ -8,6 +8,7 @@ import {
   useLazyGetProductsQuery,
 } from "@/redux/api/productApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import { useQuickAddProductContext } from "@/shared/providers/QuickAddProductProvider";
 import { TransactionLineColumnDefinition } from "@/features/operations/shared/transactionLineItems";
 import {
   GOODS_RECEIPT_LINE_COLUMNS,
@@ -58,6 +59,7 @@ function getProductSellingRate(product: Product) {
 export function useGoodsReceiptLineColumns() {
   const [searchProducts] = useLazyGetProductsQuery();
   const [getProductById] = useLazyGetProductByIdQuery();
+  const { openProductQuickAdd } = useQuickAddProductContext();
 
   return useMemo<GoodsReceiptLineColumnDefinition[]>(() => {
     const sortAccessors: Record<
@@ -80,6 +82,7 @@ export function useGoodsReceiptLineColumns() {
       manufacturingDateUtc: (line) => line.manufacturingDateUtc,
       expiryDateUtc: (line) => line.expiryDateUtc,
       remark: (line) => line.remark,
+      profitPercent: (line) => Number.parseFloat(line.profitPercent) || 0,
       sellingRate: (line) => Number.parseFloat(line.sellingRate) || 0,
     };
 
@@ -135,11 +138,27 @@ export function useGoodsReceiptLineColumns() {
                 unitName: product.stockAndMeasurement.purchaseUomName,
                 rate: `${product.pricingAndRates.purchaseRate ?? 0}`,
                 fRate: `${product.pricingAndRates.purchaseRate ?? 0}`,
-                sellingRate: `${getProductSellingRate(product)}`,
+                profitPercent: `${product.pricingAndRates.profitPercentage ?? 0}`,
               });
             } catch {
               // Keep the typed product label if detail hydration fails.
             }
+          }}
+          onNoMatchClick={(keyword) => {
+            openProductQuickAdd(keyword, (product) => {
+              onChange(line.rowId, {
+                productId: product.id,
+                productNameSnapshot: product.basicInfo.name,
+                code: product.basicInfo.code,
+                ubc: product.additionalDetails.barcode ?? "",
+                hsnCode: product.stockAndMeasurement.hsn ?? "",
+                unitId: product.stockAndMeasurement.purchaseUomId,
+                unitName: product.stockAndMeasurement.purchaseUomName,
+                rate: `${product.pricingAndRates.purchaseRate ?? 0}`,
+                fRate: `${product.pricingAndRates.purchaseRate ?? 0}`,
+                profitPercent: `${product.pricingAndRates.profitPercentage ?? 0}`,
+              });
+            });
           }}
         />
       ),
@@ -244,8 +263,13 @@ export function useGoodsReceiptLineColumns() {
       remark: ({ line, onChange }) => (
         <input className={inputClass} value={line.remark} onChange={(event) => onChange(line.rowId, { remark: event.target.value })} />
       ),
-      sellingRate: ({ line, onChange }) => (
-        <input className={inputClass} type="number" min="0" step="0.01" value={line.sellingRate} onChange={(event) => onChange(line.rowId, { sellingRate: event.target.value })} />
+      profitPercent: ({ line, onChange }) => (
+        <input className={inputClass} type="number" min="0" step="0.01" value={line.profitPercent} onChange={(event) => onChange(line.rowId, { profitPercent: event.target.value })} />
+      ),
+      sellingRate: ({ line }) => (
+        <div className="truncate px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+          {formatReadonlyValue(line.sellingRate)}
+        </div>
       ),
     };
 

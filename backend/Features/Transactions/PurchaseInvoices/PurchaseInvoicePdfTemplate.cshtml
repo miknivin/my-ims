@@ -1,0 +1,218 @@
+@using backend.Features.Transactions.PurchaseInvoices
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111827; background: #fff; }
+.watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(-45deg); font-size: 110px; font-weight: 900; color: rgba(0,0,0,0.04); white-space: nowrap; z-index: 9999; pointer-events: none; letter-spacing: 0.3em; user-select: none; }
+.page { padding: 0; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 2px solid #7c3aed; margin-bottom: 14px; }
+.co-name { font-size: 20px; font-weight: 800; color: #7c3aed; }
+.co-tag { font-size: 9.5px; color: #6b7280; margin-top: 2px; }
+.doc-title { font-size: 13px; font-weight: 700; color: #7c3aed; letter-spacing: 2px; text-transform: uppercase; text-align: right; }
+.doc-no { font-size: 12px; font-weight: 700; color: #111827; text-align: right; margin-top: 4px; }
+.meta-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
+.m-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 3px; }
+.m-value { font-size: 11px; font-weight: 600; color: #111827; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+.b-draft { background: #fef3c7; color: #92400e; }
+.b-submitted { background: #d1fae5; color: #065f46; }
+.b-cancelled { background: #fee2e2; color: #991b1b; }
+.b-preview { background: #ede9fe; color: #5b21b6; }
+.info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.info-box { border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; }
+.ib-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 5px; }
+.ib-name { font-size: 11.5px; font-weight: 700; color: #111827; margin-bottom: 3px; }
+.ib-line { font-size: 10.5px; color: #4b5563; line-height: 1.55; }
+.sec-meta { display: flex; gap: 24px; margin-bottom: 14px; padding: 8px 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; }
+table { width: 100%; border-collapse: collapse; font-size: 10.5px; margin-bottom: 12px; }
+thead th { background: #7c3aed; color: #fff; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 7px 8px; text-align: left; }
+thead th.r { text-align: right; }
+thead th.c { text-align: center; }
+tbody td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+tbody td.r { text-align: right; }
+tbody td.c { text-align: center; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(even) td { background: #f9fafb; }
+.add-wrap { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.sum-wrap { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.sum-box { width: 268px; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
+.sum-row { display: flex; justify-content: space-between; padding: 5px 14px; font-size: 10.5px; border-bottom: 1px solid #f3f4f6; }
+.sum-row:last-child { border-bottom: none; }
+.sl { color: #6b7280; }
+.sv { font-weight: 600; color: #111827; }
+.net-row { background: #f5f3ff; border-top: 2px solid #7c3aed !important; }
+.net-row .sl { color: #7c3aed; font-weight: 700; font-size: 12px; }
+.net-row .sv { color: #7c3aed; font-weight: 800; font-size: 12px; }
+.notes-wrap { border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 2px; display: flex; gap: 20px; }
+.n-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 4px; }
+.n-text { font-size: 10.5px; color: #374151; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="page">
+
+@if (Model.IsPreview)
+{
+    <div class="watermark">PREVIEW</div>
+}
+
+<div class="header">
+    <div>
+        <div class="co-name">My IMS</div>
+        <div class="co-tag">Inventory Management System</div>
+    </div>
+    <div>
+        <div class="doc-title">Purchase Invoice</div>
+        <div class="doc-no">@Model.No</div>
+    </div>
+</div>
+
+<div class="meta-grid">
+    <div><div class="m-label">Date</div><div class="m-value">@Model.Date</div></div>
+    <div><div class="m-label">Due Date</div><div class="m-value">@Model.DueDate</div></div>
+    <div>
+        <div class="m-label">Status</div>
+        <div class="m-value"><span class="badge @Model.BadgeClass">@Model.BadgeText</span></div>
+    </div>
+    <div>
+        <div class="m-label">Tax</div>
+        <div class="m-value">@(Model.Taxable ? "Taxable" : "Non-Taxable")</div>
+    </div>
+</div>
+
+<div class="info-row">
+    <div class="info-box">
+        <div class="ib-label">Vendor</div>
+        <div class="ib-name">@Model.VendorName</div>
+        <div class="ib-line">@Model.VendorAddress</div>
+        @if (!string.IsNullOrWhiteSpace(Model.VendorAttention))
+        {
+            <div class="ib-line">Attn: @Model.VendorAttention</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.VendorPhone))
+        {
+            <div class="ib-line">Tel: @Model.VendorPhone</div>
+        }
+    </div>
+    <div class="info-box">
+        <div class="ib-label">Reference</div>
+        <div class="m-label" style="margin-top:4px">Type</div>
+        <div class="ib-name">@Model.ReferenceType</div>
+        @if (!string.IsNullOrWhiteSpace(Model.ReferenceNo))
+        {
+            <div class="m-label" style="margin-top:6px">Ref No</div>
+            <div class="ib-name">@Model.ReferenceNo</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.SupplierInvoiceNo))
+        {
+            <div class="m-label" style="margin-top:6px">Supplier Invoice</div>
+            <div class="ib-name">@Model.SupplierInvoiceNo</div>
+        }
+    </div>
+</div>
+
+<div class="sec-meta">
+    <div><div class="m-label">Payment Mode</div><div class="m-value">@Model.PaymentMode</div></div>
+    @if (!string.IsNullOrWhiteSpace(Model.Currency))
+    {
+        <div><div class="m-label">Currency</div><div class="m-value">@Model.Currency</div></div>
+    }
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th style="width:30px">#</th>
+            <th>Product</th>
+            <th class="c" style="width:62px">HSN</th>
+            <th class="r" style="width:52px">Qty</th>
+            <th class="c" style="width:44px">UOM</th>
+            <th class="r" style="width:68px">Rate</th>
+            <th class="r" style="width:68px">Discount</th>
+            <th class="r" style="width:68px">Tax</th>
+            <th class="r" style="width:78px">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td class="c">@item.Index</td>
+                <td>@item.ProductName</td>
+                <td class="c">@item.HsnCode</td>
+                <td class="r">@item.Quantity</td>
+                <td class="c">@item.Uom</td>
+                <td class="r">@item.Rate</td>
+                <td class="r">@item.DiscountAmount</td>
+                <td class="r">@item.TaxAmount</td>
+                <td class="r">@item.Total</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.Additions.Count > 0)
+{
+    <div class="add-wrap">
+        <table style="width:46%">
+            <thead>
+                <tr>
+                    <th>Addition / Deduction</th>
+                    <th class="r" style="width:88px">Amount</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model.Additions)
+                {
+                    <tr>
+                        <td>
+                            @a.Name
+                            @if (a.IsDeduction)
+                            {
+                                <span style="color:#dc2626;font-size:8.5px">&nbsp;(Deduction)</span>
+                            }
+                        </td>
+                        <td class="r">@a.Amount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<div class="sum-wrap">
+    <div class="sum-box">
+        <div class="sum-row"><span class="sl">Sub Total</span><span class="sv">@Model.Total</span></div>
+        <div class="sum-row"><span class="sl">Discount</span><span class="sv">&#8722; @Model.Discount</span></div>
+        <div class="sum-row"><span class="sl">Tax</span><span class="sv">+ @Model.Tax</span></div>
+        @if (Model.HasAddition)
+        {
+            <div class="sum-row">
+                <span class="sl">Addition / Deduction</span>
+                <span class="sv">@Model.AdditionSign @Model.AdditionAbs</span>
+            </div>
+        }
+        <div class="sum-row net-row"><span class="sl">Net Total</span><span class="sv">@Model.NetTotal</span></div>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Notes) || !string.IsNullOrWhiteSpace(Model.FooterNotes))
+{
+    <div class="notes-wrap">
+        @if (!string.IsNullOrWhiteSpace(Model.Notes))
+        {
+            <div style="flex:1"><div class="n-label">Notes</div><div class="n-text">@Model.Notes</div></div>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.FooterNotes))
+        {
+            <div style="flex:1"><div class="n-label">Remarks</div><div class="n-text">@Model.FooterNotes</div></div>
+        }
+    </div>
+}
+
+</div>
+</body>
+</html>

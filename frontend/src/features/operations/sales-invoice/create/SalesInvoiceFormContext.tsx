@@ -160,6 +160,7 @@ export function SalesInvoiceFormProvider({
               no: salesOrder.orderDetails.no,
             },
             customerInformation: {
+              ...current.customerInformation,
               customerId: salesOrder.partyInformation.customerId,
               customerName: salesOrder.partyInformation.customerNameSnapshot,
               address: salesOrder.partyInformation.address ?? "",

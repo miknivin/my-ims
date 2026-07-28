@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router";
 import {
   useGetSettingsQuery,
   useUpdateSettingsMutation,
@@ -290,7 +291,11 @@ export function SettingsFormProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [activeTab, setActiveTab] = useState<SettingsTabKey>("general");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: SettingsTabKey =
+    (searchParams.get("tab") as SettingsTabKey | null) ?? "general";
+  const setActiveTab = (tab: SettingsTabKey) =>
+    setSearchParams({ tab }, { replace: true });
   const { data, isLoading, isFetching } = useGetSettingsQuery();
   const { data: warehouses = [] } = useGetWarehousesQuery();
   const { data: ledgers = [] } = useGetLedgersQuery();

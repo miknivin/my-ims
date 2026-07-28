@@ -71,6 +71,7 @@ public sealed class SalesInvoiceDocument
     public string No { get; set; } = string.Empty;
     public DateOnly Date { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
     public DateOnly DueDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    public string? SalespersonName { get; set; }
 }
 
 public sealed class SalesInvoiceCustomerInformation
@@ -80,6 +81,8 @@ public sealed class SalesInvoiceCustomerInformation
 
     public string CustomerNameSnapshot { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
+    public string? CustomerGstinSnapshot { get; set; }
+    public string? ShippingAddress { get; set; }
 }
 
 public sealed class SalesInvoiceFinancialDetails

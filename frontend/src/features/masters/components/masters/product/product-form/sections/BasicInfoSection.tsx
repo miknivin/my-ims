@@ -52,6 +52,7 @@ export default function BasicInfoSection() {
         <div className="mb-2">
           <Label>Tax Group</Label>
           <AutocompleteSelect<LookupOption, LookupOption[]>
+            selectedKey={state.basicInfo.taxId || null}
             value={resolvedTaxLabel}
             placeholder="Search tax group"
             search={(keyword) =>

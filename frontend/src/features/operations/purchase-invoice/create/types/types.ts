@@ -91,7 +91,7 @@ export interface PurchaseInvoiceLineState {
   taxPercent: string;
   taxAmount: number;
   cost: number;
-  profitPercent: number;
+  profitPercent: string;
   profitAmount: number;
   sellingRate: string;
   wholesaleRate: string;
@@ -164,7 +164,7 @@ export function createEmptyPurchaseInvoiceLine(
     taxPercent: "0",
     taxAmount: 0,
     cost: 0,
-    profitPercent: 0,
+    profitPercent: "0",
     profitAmount: 0,
     sellingRate: "0",
     wholesaleRate: "0",
@@ -335,9 +335,8 @@ export function recalculatePurchaseInvoiceLine(
     : 0;
   const lineTotal = roundAmount(taxableAmount + taxAmount);
   const cost = totalQuantity > 0 ? roundAmount(lineTotal / totalQuantity) : 0;
-  const sellingRate = parseNumber(line.sellingRate);
-  const profitPercent =
-    cost > 0 ? roundAmount(((sellingRate - cost) / cost) * 100) : 0;
+  const profitPercent = parseNumber(line.profitPercent);
+  const sellingRate = roundAmount(cost * (1 + profitPercent / 100));
   const profitAmount = roundAmount((sellingRate - cost) * totalQuantity);
 
   return {
@@ -347,7 +346,7 @@ export function recalculatePurchaseInvoiceLine(
     taxableAmount,
     taxAmount,
     cost,
-    profitPercent,
+    sellingRate: `${sellingRate}`,
     profitAmount,
     lineTotal,
   };

@@ -1,8 +1,8 @@
 namespace backend.Features.Transactions.SalesInvoices;
 
 public sealed record SalesInvoiceSourceReferenceRequest(string Type, Guid? ReferenceId, string ReferenceNo);
-public sealed record SalesInvoiceDocumentRequest(string VoucherType, string No, DateOnly Date, DateOnly DueDate);
-public sealed record SalesInvoiceCustomerInformationRequest(Guid CustomerId, string CustomerNameSnapshot, string Address);
+public sealed record SalesInvoiceDocumentRequest(string VoucherType, string No, DateOnly Date, DateOnly DueDate, string? SalespersonName = null);
+public sealed record SalesInvoiceCustomerInformationRequest(Guid CustomerId, string CustomerNameSnapshot, string Address, string? CustomerGstinSnapshot = null, string? ShippingAddress = null);
 public sealed record SalesInvoiceFinancialDetailsRequest(string PaymentMode, string? InvoiceNo, string? LrNo, Guid? CurrencyId, string? CurrencyCodeSnapshot, string? CurrencySymbolSnapshot, decimal Balance);
 public sealed record SalesInvoiceGeneralRequest(string? Notes, bool Taxable, string TaxApplication, bool InterState);
 public sealed record SalesInvoiceLineItemRequest(int Sno, Guid ProductId, string? ProductCodeSnapshot, string ProductNameSnapshot, string? HsnCode, Guid UnitId, decimal Quantity, decimal Rate, decimal DiscountPercent, decimal TaxPercent, Guid? WarehouseId);

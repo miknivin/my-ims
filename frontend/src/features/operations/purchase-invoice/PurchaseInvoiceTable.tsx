@@ -1,4 +1,10 @@
-import { PurchaseInvoiceListItem } from "@/redux/api/purchaseInvoiceApi";
+import { useState } from "react";
+import { CheckCircle, Download, XCircle } from "lucide-react";
+import {
+  PurchaseInvoiceListItem,
+  useDownloadPurchaseInvoicePdfMutation,
+  useUpdatePurchaseInvoiceStatusMutation,
+} from "@/redux/api/purchaseInvoiceApi";
 import {
   Table,
   TableBody,
@@ -6,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import ConfirmAlert from "@/shared/components/ui/alert/ConfirmAlert";
 
 interface PurchaseInvoiceTableProps {
   purchaseInvoices: PurchaseInvoiceListItem[];
@@ -38,6 +45,44 @@ export default function PurchaseInvoiceTable({
   isLoading,
   isError,
 }: PurchaseInvoiceTableProps) {
+  const [updateStatus] = useUpdatePurchaseInvoiceStatusMutation();
+  const [downloadPdf] = useDownloadPurchaseInvoicePdfMutation();
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{
+    id: string;
+    no: string;
+    type: "submit" | "cancel";
+  } | null>(null);
+
+  const handleDownload = async (id: string, no: string) => {
+    setDownloadingId(id);
+    try {
+      const url = await downloadPdf(id).unwrap();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `PI-${no}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!confirm) return;
+    setActionId(confirm.id);
+    setConfirm(null);
+    try {
+      await updateStatus({
+        id: confirm.id,
+        status: confirm.type === "submit" ? "Submitted" : "Cancelled",
+      });
+    } finally {
+      setActionId(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center p-6 text-gray-500 dark:text-gray-400">
@@ -55,84 +100,147 @@ export default function PurchaseInvoiceTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-      <div className="max-w-full overflow-x-auto">
-        <div className="min-w-[980px]">
-          <Table>
-            <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-              <TableRow>
-                <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
-                  PI No
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
-                  Date
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
-                  Vendor
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
-                  Net Total
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
-                  Status
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
-                  Created
-                </TableCell>
-                <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
-                  Updated
-                </TableCell>
-              </TableRow>
-            </TableHeader>
+    <>
+      <ConfirmAlert
+        open={confirm !== null}
+        title={
+          confirm?.type === "submit"
+            ? "Create purchase invoice?"
+            : "Cancel purchase invoice?"
+        }
+        message={
+          confirm?.type === "submit"
+            ? `This will submit ${confirm?.no} and post the related inventory and journal effects.`
+            : `This will cancel ${confirm?.no} and reverse the posted journal entries.`
+        }
+        confirmLabel={confirm?.type === "submit" ? "Create" : "Cancel Invoice"}
+        isConfirming={actionId === confirm?.id}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirm(null)}
+      />
 
-            <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-              {purchaseInvoices.map((purchaseInvoice) => (
-                <TableRow key={purchaseInvoice.id}>
-                  <TableCell className="px-5 py-4 text-start text-theme-sm font-medium text-gray-800 dark:text-white/90">
-                    {purchaseInvoice.no}
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="max-w-full overflow-x-auto">
+          <div className="min-w-[980px]">
+            <Table>
+              <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                <TableRow>
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    PI No
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(purchaseInvoice.date)}
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Date
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {purchaseInvoice.vendorName}
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Vendor
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {purchaseInvoice.netTotal.toFixed(2)}
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Net Total
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-start text-theme-sm">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                        purchaseInvoice.status === "Draft" ||
-                        purchaseInvoice.status === "Pending"
-                          ? "bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-400"
-                          : purchaseInvoice.status === "Submitted" ||
-                              purchaseInvoice.status === "Completed"
-                            ? "bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400"
-                            : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                      }`}
-                    >
-                      {purchaseInvoice.status}
-                    </span>
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Status
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(purchaseInvoice.createdAtUtc, true)}
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Created
                   </TableCell>
-                  <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(purchaseInvoice.updatedAtUtc, true)}
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Updated
+                  </TableCell>
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Action
                   </TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+              </TableHeader>
 
-      {purchaseInvoices.length === 0 ? (
-        <div className="border-t border-gray-100 px-5 py-6 text-sm text-gray-500 dark:border-white/[0.05] dark:text-gray-400">
-          No purchase invoices yet. Use "Add +" to create the first one.
+              <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                {purchaseInvoices.map((pi) => (
+                  <TableRow key={pi.id}>
+                    <TableCell className="px-5 py-4 text-start text-theme-sm font-medium text-gray-800 dark:text-white/90">
+                      {pi.no}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      {formatDate(pi.date)}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      {pi.vendorName}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      {pi.netTotal.toFixed(2)}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-start text-theme-sm">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                          pi.status === "Draft" || pi.status === "Pending"
+                            ? "bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-400"
+                            : pi.status === "Submitted" || pi.status === "Completed"
+                              ? "bg-success-50 text-success-700 dark:bg-success-500/15 dark:text-success-400"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        }`}
+                      >
+                        {pi.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      {formatDate(pi.createdAtUtc, true)}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      {formatDate(pi.updatedAtUtc, true)}
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-start">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(pi.id, pi.no)}
+                          disabled={downloadingId === pi.id}
+                          aria-label="Download PDF"
+                          title="Download PDF"
+                          className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                        >
+                          <Download size={14} />
+                        </button>
+                        {pi.status === "Draft" ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setConfirm({ id: pi.id, no: pi.no, type: "submit" })
+                            }
+                            disabled={actionId === pi.id}
+                            aria-label="Submit"
+                            title="Submit"
+                            className="rounded-lg border border-green-200 p-2 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-green-500/30 dark:text-green-400 dark:hover:bg-green-500/10"
+                          >
+                            <CheckCircle size={14} />
+                          </button>
+                        ) : null}
+                        {pi.status === "Submitted" ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setConfirm({ id: pi.id, no: pi.no, type: "cancel" })
+                            }
+                            disabled={actionId === pi.id}
+                            aria-label="Cancel"
+                            title="Cancel Invoice"
+                            className="rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+                          >
+                            <XCircle size={14} />
+                          </button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      ) : null}
-    </div>
+
+        {purchaseInvoices.length === 0 ? (
+          <div className="border-t border-gray-100 px-5 py-6 text-sm text-gray-500 dark:border-white/[0.05] dark:text-gray-400">
+            No purchase invoices yet. Use "Add +" to create the first one.
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 }

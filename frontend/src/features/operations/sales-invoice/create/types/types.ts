@@ -40,12 +40,15 @@ export interface SalesInvoiceDocumentState {
   no: string;
   date: string;
   dueDate: string;
+  salespersonName: string;
 }
 
 export interface SalesInvoiceCustomerInformationState {
   customerId: string | null;
   customerName: string;
   address: string;
+  customerGstinSnapshot: string;
+  shippingAddress: string;
 }
 
 export interface SalesInvoiceFinancialDetailsState {
@@ -182,11 +185,14 @@ export function createSalesInvoiceFormState(
       no: "",
       date: today,
       dueDate: today,
+      salespersonName: "",
     },
     customerInformation: {
       customerId: null,
       customerName: "",
       address: "",
+      customerGstinSnapshot: "",
+      shippingAddress: "",
     },
     financialDetails: {
       paymentMode: "Cash",
@@ -374,11 +380,14 @@ export function toSalesInvoicePayload(
       no: state.document.no,
       date: state.document.date,
       dueDate: state.document.dueDate,
+      salespersonName: state.document.salespersonName || null,
     },
     customerInformation: {
       customerId: state.customerInformation.customerId ?? "",
       customerNameSnapshot: state.customerInformation.customerName,
       address: state.customerInformation.address,
+      customerGstinSnapshot: state.customerInformation.customerGstinSnapshot || null,
+      shippingAddress: state.customerInformation.shippingAddress || null,
     },
     financialDetails: {
       paymentMode: state.financialDetails.paymentMode,

@@ -6,6 +6,7 @@ import { PURCHASE_ORDER_LINE_COLUMNS, PurchaseOrderLineColumnKey, PurchaseOrderL
 import { Product, ProductListItem, useLazyGetProductByIdQuery, useLazyGetProductsQuery } from "@/redux/api/productApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
 import { TransactionLineColumnDefinition } from "@/features/operations/shared/transactionLineItems";
+import { useQuickAddProductContext } from "@/shared/providers/QuickAddProductProvider";
 
 
 
@@ -44,6 +45,7 @@ function formatReadonlyValue(value: string | number | null) {
 export function usePurchaseOrderLineColumns() {
   const [searchProducts] = useLazyGetProductsQuery();
   const [getProductById] = useLazyGetProductByIdQuery();
+  const { openProductQuickAdd } = useQuickAddProductContext();
 
   return useMemo<PurchaseOrderLineColumnDefinition[]>(() => {
     const sortAccessors: Record<
@@ -141,6 +143,18 @@ export function usePurchaseOrderLineColumns() {
               // Keep partial hydration when detail fetch fails.
             }
           }}
+          onNoMatchClick={(keyword) => {
+            openProductQuickAdd(keyword, (product) => {
+              onChange(line.rowId, {
+                itemId: product.id,
+                itemNameSnapshot: product.basicInfo.name,
+                hsnCode: product.stockAndMeasurement.hsn ?? "",
+                rate: String(product.pricingAndRates.purchaseRate ?? 0),
+                unitId: product.stockAndMeasurement.baseUomId,
+                unitName: product.stockAndMeasurement.baseUomName,
+              });
+            });
+          }}
         />
       ),
       hsnCode: ({ line, onChange }) => (
@@ -165,24 +179,27 @@ export function usePurchaseOrderLineColumns() {
         />
       ),
       unitId: ({ line, onChange, uoms }) => (
-        <select
-          className={inputClass}
-          value={line.unitId ?? ""}
-          onChange={(event) => {
-            const selected = uoms.find((uom) => uom.id === event.target.value);
-            onChange(line.rowId, {
-              unitId: selected?.id ?? null,
-              unitName: selected?.name ?? "",
-            });
+        <AutocompleteSelect
+          value={line.unitName}
+          className="bg-transparent text-xs"
+          placeholder="Search unit"
+          search={async (keyword) => {
+            const lower = keyword.trim().toLowerCase();
+            return uoms
+              .filter((uom) => uom.name.toLowerCase().includes(lower))
+              .slice(0, 10);
           }}
-        >
-          <option value="">Unit</option>
-          {uoms.map((uom) => (
-            <option key={uom.id} value={uom.id}>
-              {uom.name}
-            </option>
-          ))}
-        </select>
+          getItems={(result) => result}
+          getOptionKey={(item) => item.id}
+          getOptionLabel={(item) => item.name}
+          onInputChange={() => onChange(line.rowId, { unitId: null, unitName: "" })}
+          onSelect={(item) =>
+            onChange(line.rowId, {
+              unitId: item?.id ?? null,
+              unitName: item?.name ?? "",
+            })
+          }
+        />
       ),
       rate: ({ line, onChange }) => (
         <input

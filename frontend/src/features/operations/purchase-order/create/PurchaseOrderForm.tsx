@@ -2,7 +2,11 @@ import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router";
 import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { SerializedError } from "@reduxjs/toolkit";
-import { useCreatePurchaseOrderMutation } from "@/redux/api/purchaseOrderApi";
+import {
+  useCreatePurchaseOrderMutation,
+  useUpdatePurchaseOrderStatusMutation,
+  usePreviewPurchaseOrderPdfMutation,
+} from "@/redux/api/purchaseOrderApi";
 import {
   PURCHASE_ORDER_DRAFT_STORAGE_KEY,
   toPurchaseOrderPayload,
@@ -11,28 +15,25 @@ import {
   PurchaseOrderFormProvider,
   usePurchaseOrderForm,
 } from "./PurchaseOrderFormContext";
+import { validatePurchaseOrderForm } from "./validation/validatePurchaseOrderForm";
 import OrderDetailsSection from "./sections/OrderDetailsSection";
 import VendorInformationSection from "./sections/VendorInformationSection";
 import FinancialDetailsSection from "./sections/FinancialDetailsSection";
 import DeliveryInformationSection from "./sections/DeliveryInformationSection";
-import ProcurementSection from "./sections/ProcurementSection";
 import LineItemsSection from "./LineItemsSection";
 import SummaryFooterSection from "./SummaryFooterSection";
 import TransactionStickyActionBar from "@/features/operations/shared/TransactionStickyActionBar";
 import TransactionHeaderGrid from "@/features/operations/shared/TransactionHeaderGrid";
+import PurchaseOrderPdfPreviewModal from "../PurchaseOrderPdfPreviewModal";
 
 function getMutationErrorMessage(
   error: FetchBaseQueryError | SerializedError | undefined,
 ) {
-  if (!error) {
-    return "Unable to save the purchase order.";
-  }
-
+  if (!error) return "Unable to save the purchase order.";
   if ("status" in error) {
     const errorData = error.data as { message?: string } | undefined;
     return errorData?.message ?? "Unable to save the purchase order.";
   }
-
   return error.message ?? "Unable to save the purchase order.";
 }
 
@@ -40,45 +41,58 @@ function PurchaseOrderFormBody() {
   const navigate = useNavigate();
   const { state, reset } = usePurchaseOrderForm();
   const [createPurchaseOrder] = useCreatePurchaseOrderMutation();
+  const [updatePurchaseOrderStatus] = useUpdatePurchaseOrderStatusMutation();
+  const [previewPdf] = usePreviewPurchaseOrderPdfMutation();
   const [formError, setFormError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const validate = () => {
+    const error = validatePurchaseOrderForm(state);
+    if (error) {
+      setFormError(error);
+      return false;
+    }
+    return true;
+  };
+
+  const handlePreview = async () => {
+    setFormError("");
+    if (!validate()) return;
+
+    setIsPreviewing(true);
+    try {
+      const url = await previewPdf(toPurchaseOrderPayload(state)).unwrap();
+      setPreviewUrl(url);
+    } catch {
+      setFormError("Failed to generate PDF preview. Please try again.");
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const clearAndRedirect = () => {
+    window.localStorage.removeItem(PURCHASE_ORDER_DRAFT_STORAGE_KEY);
+    reset();
+    navigate("/operations/purchase-order");
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setFormError("");
-
-    if (!state.orderDetails.no.trim()) {
-      setFormError("Purchase order number is required.");
-      return;
-    }
-
-    if (!state.vendorInformation.vendorId) {
-      setFormError("Please select a vendor.");
-      return;
-    }
-
-    if (!state.deliveryInformation.address.trim()) {
-      setFormError("Delivery address is required.");
-      return;
-    }
-
-    const hasValidLine = state.items.some(
-      (line) => line.itemId && Number.parseFloat(line.quantity) > 0,
-    );
-
-    if (!hasValidLine) {
-      setFormError("Add at least one line item with a product and quantity.");
-      return;
-    }
+    if (!validate()) return;
 
     setIsSaving(true);
-
     try {
-      await createPurchaseOrder(toPurchaseOrderPayload(state)).unwrap();
-
-      window.localStorage.removeItem(PURCHASE_ORDER_DRAFT_STORAGE_KEY);
-      reset();
-      navigate("/operations/purchase-order");
+      const created = await createPurchaseOrder(
+        toPurchaseOrderPayload(state),
+      ).unwrap();
+      await updatePurchaseOrderStatus({
+        id: created.id,
+        status: "Submitted",
+      }).unwrap();
+      clearAndRedirect();
     } catch (error) {
       setFormError(
         getMutationErrorMessage(error as FetchBaseQueryError | SerializedError),
@@ -88,14 +102,37 @@ function PurchaseOrderFormBody() {
     }
   };
 
+  const handleSaveAsDraft = async () => {
+    setFormError("");
+    if (!validate()) return;
+
+    setIsSaving(true);
+    try {
+      await createPurchaseOrder(toPurchaseOrderPayload(state)).unwrap();
+      clearAndRedirect();
+    } catch (error) {
+      setFormError(
+        getMutationErrorMessage(error as FetchBaseQueryError | SerializedError),
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+  };
+
   return (
+    <>
+    <PurchaseOrderPdfPreviewModal url={previewUrl} onClose={closePreview} />
     <form onSubmit={handleSubmit} className="space-y-6">
-      <TransactionHeaderGrid>
+      <TransactionHeaderGrid columns={4}>
         <OrderDetailsSection />
         <VendorInformationSection />
         <DeliveryInformationSection />
         <FinancialDetailsSection />
-        <ProcurementSection />
       </TransactionHeaderGrid>
 
       <LineItemsSection />
@@ -109,15 +146,20 @@ function PurchaseOrderFormBody() {
 
       <TransactionStickyActionBar
         isSaving={isSaving}
-        primaryLabel="Save Purchase Order"
+        primaryLabel="Submit"
+        draftLabel="Save as Draft"
+        onDraft={handleSaveAsDraft}
         onReset={() => {
           reset();
           window.localStorage.removeItem(PURCHASE_ORDER_DRAFT_STORAGE_KEY);
           setFormError("");
         }}
         onCancel={() => navigate("/operations/purchase-order")}
+        onPreview={handlePreview}
+        isPreviewing={isPreviewing}
       />
     </form>
+    </>
   );
 }
 

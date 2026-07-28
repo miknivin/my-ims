@@ -35,6 +35,7 @@ public sealed class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesIn
             document.Property(item => item.No).HasColumnName("no").HasMaxLength(50).IsRequired();
             document.Property(item => item.Date).HasColumnName("date").IsRequired();
             document.Property(item => item.DueDate).HasColumnName("due_date").IsRequired();
+            document.Property(item => item.SalespersonName).HasColumnName("salesperson_name").HasMaxLength(150);
             document.HasIndex(item => item.No).IsUnique();
         });
 
@@ -43,6 +44,8 @@ public sealed class SalesInvoiceConfiguration : IEntityTypeConfiguration<SalesIn
             customer.Property(item => item.CustomerId).HasColumnName("customer_id").IsRequired();
             customer.Property(item => item.CustomerNameSnapshot).HasColumnName("customer_name_snapshot").HasMaxLength(150).IsRequired();
             customer.Property(item => item.Address).HasColumnName("customer_address").HasMaxLength(500).IsRequired();
+            customer.Property(item => item.CustomerGstinSnapshot).HasColumnName("customer_gstin_snapshot").HasMaxLength(50);
+            customer.Property(item => item.ShippingAddress).HasColumnName("customer_shipping_address").HasMaxLength(500);
             customer.HasOne(item => item.Customer).WithMany().HasForeignKey(item => item.CustomerId).OnDelete(DeleteBehavior.Restrict);
         });
 

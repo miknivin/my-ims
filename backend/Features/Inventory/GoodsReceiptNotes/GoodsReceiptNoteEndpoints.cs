@@ -4,11 +4,12 @@ public static class GoodsReceiptNoteEndpoints
 {
     public static IEndpointRouteBuilder MapGoodsReceiptNoteEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/inventory/goods-receipt-notes").WithTags("Goods Receipt Notes");
+        var group = app.MapGroup("/api/inventory/goods-receipt-notes").WithTags("Goods Receipt Notes").RequireAuthorization();
 
         group.MapGet("/", GoodsReceiptNoteHandlers.GetAllAsync);
         group.MapGet("/{id:guid}", GoodsReceiptNoteHandlers.GetByIdAsync);
         group.MapPost("/", GoodsReceiptNoteHandlers.CreateAsync);
+        group.MapPost("/preview-pdf", GoodsReceiptNoteHandlers.PreviewPdfAsync);
         group.MapPatch("/{id:guid}", GoodsReceiptNoteHandlers.UpdateStatusAsync);
 
         return app;

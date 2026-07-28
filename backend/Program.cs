@@ -1,4 +1,9 @@
+using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
+using Serilog;
+using Serilog.Events;
+using Serilog.Sinks.SystemConsole.Themes;
 using backend.Features.Auth;
 using backend.Features.Accounting.Journals;
 using backend.Features.Reports.FinancialStatements;
@@ -9,6 +14,8 @@ using backend.Features.Reports.SalesPurchase.PurchaseRegister;
 using backend.Features.Reports.SalesPurchase.SalesRegister;
 using backend.Features.Lookups;
 using backend.Features.Utils;
+using backend.Features.Inventory;
+using backend.Features.Inventory.DeliveryNotes;
 using backend.Features.Inventory.GoodsReceiptNotes;
 using backend.Features.Masters.Categories;
 using backend.Features.Masters.Customers;
@@ -39,14 +46,31 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore",          LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Npgsql",                        LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console(
+        theme: AnsiConsoleTheme.Code,
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
 var builder = WebApplication.CreateBuilder(args);
 LoadDotEnv(builder.Environment.ContentRootPath);
 builder.Configuration.AddEnvironmentVariables();
+builder.Host.UseSerilog();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddHttpClient<PurchaseInvoiceAiMappingService>();
 builder.Services.AddScoped<PurchaseInvoiceAiMasterMatchService>();
+builder.Services.AddSingleton<PurchaseOrderPdfService>();
+builder.Services.AddSingleton<GoodsReceiptNotePdfService>();
+builder.Services.AddSingleton<PurchaseInvoicePdfService>();
+builder.Services.AddSingleton<SalesInvoicePdfService>();
+builder.Services.AddSingleton<DeliveryNotePdfService>();
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<AuthBootstrapOptions>(builder.Configuration.GetSection(AuthBootstrapOptions.SectionName));
@@ -93,6 +117,39 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddAuthorization();
 builder.Services.AddAntiforgery();
+builder.Services.AddRateLimiter(options =>
+{
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+    {
+        var ip = context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                 ?? context.Connection.RemoteIpAddress?.ToString()
+                 ?? "unknown";
+        var path = context.Request.Path.Value ?? "";
+
+        bool isAuth = path.StartsWith("/api/auth/login", StringComparison.OrdinalIgnoreCase)
+                   || path.StartsWith("/api/auth/register", StringComparison.OrdinalIgnoreCase);
+        bool isPdf  = path.EndsWith("/preview-pdf", StringComparison.OrdinalIgnoreCase);
+
+        int    limit = isAuth ? 15 : isPdf ? 20 : 200;
+        string key   = $"{(isAuth ? "auth" : isPdf ? "pdf" : "api")}:{ip}";
+
+        return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit          = limit,
+            Window               = TimeSpan.FromSeconds(60),
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+            QueueLimit           = 0,
+        });
+    });
+
+    options.RejectionStatusCode = 429;
+    options.OnRejected = async (ctx, ct) =>
+    {
+        ctx.HttpContext.Response.ContentType = "application/json";
+        await ctx.HttpContext.Response.WriteAsJsonAsync(
+            new backend.Features.Auth.ApiResponse<object>(false, "Too many requests. Please slow down.", null), ct);
+    };
+});
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("frontend", policy =>
@@ -129,17 +186,43 @@ using (var scope = app.Services.CreateScope())
 }
 
 await AuthBootstrapper.SeedAsync(app.Services);
+await RoleSeeder.SeedAsync(app.Services);
 await SystemLedgerSeeder.SeedAsync(app.Services);
 await AccountingLedgerSeeder.SeedAsync(app.Services);
 
 app.UseExceptionHandler();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 app.UseHttpsRedirection();
+app.UseRateLimiter();
 app.UseCors("frontend");
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate =
+        "HTTP {RequestMethod} {RequestPath} → {StatusCode} ({Elapsed:0}ms){UserContext}";
+
+    options.EnrichDiagnosticContext = static (diag, ctx) =>
+    {
+        var email = ctx.User.FindFirstValue(ClaimTypes.Email);
+        var id    = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        diag.Set("UserContext", email is not null ? $" · {email} [{id}]" : string.Empty);
+    };
+
+    options.GetLevel = static (ctx, _, ex) =>
+        ex is not null || ctx.Response.StatusCode >= 500 ? LogEventLevel.Error   :
+        ctx.Response.StatusCode >= 400                   ? LogEventLevel.Warning :
+                                                           LogEventLevel.Information;
+});
 app.UseAntiforgery();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.MapGet("/", () => Results.Ok(new { message = "IMS backend is running." }));
 app.MapAuthEndpoints();
+app.MapRoleEndpoints();
+app.MapUserEndpoints();
 app.MapCodeGeneratorEndpoints();
 app.MapLookupEndpoints();
 app.MapJournalEntryEndpoints();
@@ -174,6 +257,8 @@ app.MapSalesInvoiceEndpoints();
 app.MapSalesOrderEndpoints();
 app.MapSettingsEndpoints();
 app.MapGoodsReceiptNoteEndpoints();
+app.MapInventoryBalanceEndpoints();
+app.MapDeliveryNoteEndpoints();
 
 app.Run();
 

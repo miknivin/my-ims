@@ -251,6 +251,42 @@ export const purchaseInvoiceApi = createApi({
       }),
       invalidatesTags: ["PurchaseInvoice"],
     }),
+    updatePurchaseInvoiceStatus: builder.mutation<
+      PurchaseInvoice,
+      { id: string; status: string }
+    >({
+      query: ({ id, status }) => ({
+        url: `/${id}`,
+        method: "PATCH",
+        body: { status },
+      }),
+      transformResponse: (response: ApiResponse<PurchaseInvoice>) =>
+        response.data,
+      invalidatesTags: ["PurchaseInvoice"],
+    }),
+    downloadPurchaseInvoicePdf: builder.mutation<string, string>({
+      query: (id) => ({
+        url: `/${id}/pdf`,
+        method: "GET",
+        responseHandler: async (response) => {
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        },
+        cache: "no-cache",
+      }),
+    }),
+    previewPurchaseInvoicePdf: builder.mutation<string, PurchaseInvoicePayload>({
+      query: (body) => ({
+        url: "/preview-pdf",
+        method: "POST",
+        body,
+        responseHandler: async (response) => {
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        },
+        cache: "no-cache",
+      }),
+    }),
   }),
 });
 
@@ -260,5 +296,8 @@ export const {
   useLazyGetPurchaseInvoiceByIdQuery,
   useCreatePurchaseInvoiceMutation,
   useUpdatePurchaseInvoiceMutation,
+  useUpdatePurchaseInvoiceStatusMutation,
   useDeletePurchaseInvoiceMutation,
+  useDownloadPurchaseInvoicePdfMutation,
+  usePreviewPurchaseInvoicePdfMutation,
 } = purchaseInvoiceApi;

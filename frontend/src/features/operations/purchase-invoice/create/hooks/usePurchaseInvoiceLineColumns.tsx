@@ -1,4 +1,5 @@
 import { ReactNode, useMemo } from "react";
+import { useQuickAddProductContext } from "@/shared/providers/QuickAddProductProvider";
 import { useLazyGetUomsQuery } from "@/redux/api/uomApi";
 import { useLazyGetWarehousesQuery } from "@/redux/api/warehouseApi";
 import {
@@ -70,6 +71,7 @@ export function usePurchaseInvoiceLineColumns() {
   const [getProductById] = useLazyGetProductByIdQuery();
   const [searchUoms] = useLazyGetUomsQuery();
   const [searchWarehouses] = useLazyGetWarehousesQuery();
+  const { openProductQuickAdd } = useQuickAddProductContext();
 
   return useMemo<PurchaseInvoiceLineColumnDefinition[]>(() => {
     const sortAccessors: Record<
@@ -91,7 +93,7 @@ export function usePurchaseInvoiceLineColumns() {
       taxAmount: (line) => line.taxAmount,
       cost: (line) => line.cost,
       sellingRate: (line) => Number.parseFloat(line.sellingRate) || 0,
-      profitPercent: (line) => line.profitPercent,
+      profitPercent: (line) => Number.parseFloat(line.profitPercent) || 0,
       profitAmount: (line) => line.profitAmount,
       wholesaleRate: (line) => Number.parseFloat(line.wholesaleRate) || 0,
       mrp: (line) => Number.parseFloat(line.mrp) || 0,
@@ -153,13 +155,30 @@ export function usePurchaseInvoiceLineColumns() {
                 unitId: product.stockAndMeasurement.purchaseUomId,
                 unitName: product.stockAndMeasurement.purchaseUomName,
                 rate: `${product.pricingAndRates.purchaseRate ?? 0}`,
-                sellingRate: `${pricing?.sellingRate}`,
+                profitPercent: `${product.pricingAndRates.profitPercentage ?? 0}`,
                 wholesaleRate: `${pricing?.wholesaleRate}`,
                 mrp: `${pricing?.mrp}`,
               });
             } catch {
               // Keep the typed product label if detail hydration fails.
             }
+          }}
+          onNoMatchClick={(keyword) => {
+            openProductQuickAdd(keyword, (product) => {
+              const pricing = getPurchasePricing(product);
+              onChange(line.rowId, {
+                productId: product.id,
+                productCodeSnapshot: product.basicInfo.code,
+                productNameSnapshot: product.basicInfo.name,
+                hsnCode: product.stockAndMeasurement.hsn ?? "",
+                unitId: product.stockAndMeasurement.purchaseUomId,
+                unitName: product.stockAndMeasurement.purchaseUomName,
+                rate: `${product.pricingAndRates.purchaseRate ?? 0}`,
+                profitPercent: `${product.pricingAndRates.profitPercentage ?? 0}`,
+                wholesaleRate: `${pricing.wholesaleRate}`,
+                mrp: `${pricing.mrp}`,
+              });
+            });
           }}
         />
       ),
@@ -282,21 +301,21 @@ export function usePurchaseInvoiceLineColumns() {
           {formatReadonlyValue(line.cost)}
         </div>
       ),
-      sellingRate: ({ line, onChange }) => (
+      profitPercent: ({ line, onChange }) => (
         <input
           className={inputClass}
           type="number"
           min="0"
           step="0.01"
-          value={line.sellingRate}
+          value={line.profitPercent}
           onChange={(event) =>
-            onChange(line.rowId, { sellingRate: event.target.value })
+            onChange(line.rowId, { profitPercent: event.target.value })
           }
         />
       ),
-      profitPercent: ({ line }) => (
+      sellingRate: ({ line }) => (
         <div className="truncate px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
-          {formatReadonlyValue(line.profitPercent)}
+          {formatReadonlyValue(line.sellingRate)}
         </div>
       ),
       profitAmount: ({ line }) => (

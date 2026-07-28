@@ -2,7 +2,10 @@ import { FormEvent, useState } from "react";
 import { SerializedError } from "@reduxjs/toolkit";
 import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { useNavigate } from "react-router";
-import { useCreateSalesInvoiceMutation } from "@/redux/api/salesInvoiceApi";
+import {
+  useCreateSalesInvoiceMutation,
+  usePreviewSalesInvoicePdfMutation,
+} from "@/redux/api/salesInvoiceApi";
 import ConfirmAlert from "@/shared/components/ui/alert/ConfirmAlert";
 import TransactionHeaderGrid from "@/features/operations/shared/TransactionHeaderGrid";
 import TransactionStickyActionBar from "@/features/operations/shared/TransactionStickyActionBar";
@@ -19,6 +22,7 @@ import {
 import CustomerInformationSection from "./sections/CustomerInformationSection";
 import FinancialDetailsSection from "./sections/FinancialDetailsSection";
 import OrderDetailsSection from "./sections/OrderDetailsSection";
+import SalesInvoicePdfPreviewModal from "../SalesInvoicePdfPreviewModal";
 
 function getMutationErrorMessage(
   error: FetchBaseQueryError | SerializedError | undefined,
@@ -39,8 +43,11 @@ function SalesInvoiceFormBody() {
   const navigate = useNavigate();
   const { state, reset } = useSalesInvoiceForm();
   const [createSalesInvoice] = useCreateSalesInvoiceMutation();
+  const [previewPdf] = usePreviewSalesInvoicePdfMutation();
   const [formError, setFormError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showSubmitAlert, setShowSubmitAlert] = useState(false);
 
   const validateForm = () => {
@@ -103,48 +110,72 @@ function SalesInvoiceFormBody() {
     }
   };
 
+  const handlePreview = async () => {
+    setIsPreviewing(true);
+    try {
+      const url = await previewPdf(toSalesInvoicePayload(state)).unwrap();
+      setPreviewUrl(url);
+    } catch {
+      setFormError("Unable to generate PDF preview.");
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <ConfirmAlert
-        open={showSubmitAlert}
-        title="Create sales invoice?"
-        message="This will save the sales invoice as Submitted and post the related inventory and journal effects."
-        confirmLabel="Create"
-        isConfirming={isSaving}
-        onConfirm={() => {
-          setShowSubmitAlert(false);
-          void saveInvoice("Submitted");
-        }}
-        onCancel={() => setShowSubmitAlert(false)}
-      />
+    <>
+      <SalesInvoicePdfPreviewModal url={previewUrl} onClose={closePreview} />
 
-      <TransactionHeaderGrid>
-        <OrderDetailsSection />
-        <CustomerInformationSection />
-        <FinancialDetailsSection />
-      </TransactionHeaderGrid>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <ConfirmAlert
+          open={showSubmitAlert}
+          title="Create sales invoice?"
+          message="This will save the sales invoice as Submitted and post the related inventory and journal effects."
+          confirmLabel="Create"
+          isConfirming={isSaving}
+          onConfirm={() => {
+            setShowSubmitAlert(false);
+            void saveInvoice("Submitted");
+          }}
+          onCancel={() => setShowSubmitAlert(false)}
+        />
 
-      <LineItemsSection />
-      <SummaryFooterSection />
+        <TransactionHeaderGrid>
+          <OrderDetailsSection />
+          <CustomerInformationSection />
+          <FinancialDetailsSection />
+        </TransactionHeaderGrid>
 
-      {formError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-          {formError}
-        </div>
-      ) : null}
+        <LineItemsSection />
+        <SummaryFooterSection />
 
-      <TransactionStickyActionBar
-        isSaving={isSaving}
-        primaryLabel="Create"
-        onDraft={handleDraft}
-        onReset={() => {
-          reset();
-          window.localStorage.removeItem(SALES_INVOICE_DRAFT_STORAGE_KEY);
-          setFormError("");
-        }}
-        onCancel={() => navigate("/operations/sales-invoice")}
-      />
-    </form>
+        {formError ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+            {formError}
+          </div>
+        ) : null}
+
+        <TransactionStickyActionBar
+          isSaving={isSaving}
+          primaryLabel="Create"
+          draftLabel="Save as Draft"
+          onDraft={handleDraft}
+          onPreview={handlePreview}
+          isPreviewing={isPreviewing}
+          onReset={() => {
+            reset();
+            window.localStorage.removeItem(SALES_INVOICE_DRAFT_STORAGE_KEY);
+            setFormError("");
+          }}
+          onCancel={() => navigate("/operations/sales-invoice")}
+        />
+      </form>
+    </>
   );
 }
 

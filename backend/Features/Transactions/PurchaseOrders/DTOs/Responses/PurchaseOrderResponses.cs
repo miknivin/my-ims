@@ -98,4 +98,11 @@ public sealed record PurchaseOrderDto(Guid Id, PurchaseOrderOrderDetailsDto Orde
     }
 }
 
+public sealed record PurchaseOrderPagedListDto(
+    IReadOnlyList<PurchaseOrderListItemDto> Items,
+    int Page,
+    int Limit,
+    int Total,
+    int TotalPages);
+
 public sealed record ApiResponse<T>(bool Success, string Message, T? Data);

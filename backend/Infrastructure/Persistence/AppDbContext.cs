@@ -1,6 +1,7 @@
 using backend.Features.Auth;
 using backend.Features.Accounting.Journals;
 using backend.Features.Inventory;
+using backend.Features.Inventory.DeliveryNotes;
 using backend.Features.Inventory.GoodsReceiptNotes;
 using backend.Features.Masters.Categories;
 using backend.Features.Masters.Customers;
@@ -32,6 +33,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<User> Users => Set<User>();
 
     public DbSet<Role> Roles => Set<Role>();
+
+    public DbSet<RolePermissions> RolePermissions => Set<RolePermissions>();
 
     public DbSet<Department> Departments => Set<Department>();
 
@@ -122,6 +125,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<GoodsReceiptNote> GoodsReceiptNotes => Set<GoodsReceiptNote>();
 
     public DbSet<GoodsReceiptNoteItem> GoodsReceiptNoteItems => Set<GoodsReceiptNoteItem>();
+
+    public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
+
+    public DbSet<DeliveryNoteItem> DeliveryNoteItems => Set<DeliveryNoteItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

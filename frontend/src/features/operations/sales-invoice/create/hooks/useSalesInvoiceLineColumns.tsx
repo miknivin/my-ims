@@ -5,6 +5,8 @@ import {
   useLazyGetProductByIdQuery,
   useLazyGetProductsQuery,
 } from "@/redux/api/productApi";
+import { useLazyGetInventoryBalanceQuery } from "@/redux/api/inventoryApi";
+import { useQuickAddProductContext } from "@/shared/providers/QuickAddProductProvider";
 import { useLazyGetWarehousesQuery } from "@/redux/api/warehouseApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
 import { TransactionLineColumnDefinition } from "@/features/operations/shared/transactionLineItems";
@@ -43,7 +45,19 @@ function formatReadonlyValue(value: string | number | null) {
   return value ?? "";
 }
 
-function getDefaultSalesRate(product: Product) {
+function computeSuggestedSalesRate(
+  product: Product,
+  fifoRate: number,
+  latestProfitPercent: number | null,
+): number {
+  const profitPct =
+    latestProfitPercent ??
+    product.pricingAndRates.profitPercentage ??
+    null;
+
+  if (fifoRate > 0 && profitPct != null) {
+    return Math.round(fifoRate * (1 + profitPct / 100) * 100) / 100;
+  }
   return (
     product.pricingAndRates.salesRate ??
     product.pricingAndRates.normalRate ??
@@ -52,16 +66,17 @@ function getDefaultSalesRate(product: Product) {
   );
 }
 
-function getDefaultCostRate(product: Product) {
-  return (
-    product.pricingAndRates.cost ?? product.pricingAndRates.purchaseRate ?? 0
-  );
+function getDefaultCostRate(product: Product, fifoRate: number): number {
+  if (fifoRate > 0) return fifoRate;
+  return product.pricingAndRates.cost ?? product.pricingAndRates.purchaseRate ?? 0;
 }
 
 export function useSalesInvoiceLineColumns() {
   const [searchProducts] = useLazyGetProductsQuery();
   const [getProductById] = useLazyGetProductByIdQuery();
+  const [getInventoryBalance] = useLazyGetInventoryBalanceQuery();
   const [searchWarehouses] = useLazyGetWarehousesQuery();
+  const { openProductQuickAdd } = useQuickAddProductContext();
 
   return useMemo<SalesInvoiceLineColumnDefinition[]>(() => {
     const sortAccessors: Record<
@@ -132,7 +147,13 @@ export function useSalesInvoiceLineColumns() {
             }
 
             try {
-              const product = await getProductById(item.id).unwrap();
+              const [product, balance] = await Promise.all([
+                getProductById(item.id).unwrap(),
+                getInventoryBalance({ productId: item.id }).unwrap().catch(() => ({ valuationRate: 0, quantityOnHand: 0 })),
+              ]);
+
+              const fifoRate = balance?.valuationRate ?? 0;
+              const latestProfitPercent = balance?.latestProfitPercent ?? null;
 
               onChange(line.rowId, {
                 productId: product.id,
@@ -141,12 +162,26 @@ export function useSalesInvoiceLineColumns() {
                 hsnCode: product.stockAndMeasurement.hsn ?? "",
                 unitId: product.stockAndMeasurement.salesUomId,
                 unitName: product.stockAndMeasurement.salesUomName,
-                rate: `${getDefaultSalesRate(product)}`,
-                costRate: getDefaultCostRate(product),
+                rate: `${computeSuggestedSalesRate(product, fifoRate, latestProfitPercent)}`,
+                costRate: getDefaultCostRate(product, fifoRate),
               });
             } catch {
               // Keep the typed product label if detail hydration fails.
             }
+          }}
+          onNoMatchClick={(keyword) => {
+            openProductQuickAdd(keyword, (product) => {
+              onChange(line.rowId, {
+                productId: product.id,
+                productCodeSnapshot: product.basicInfo.code,
+                productNameSnapshot: product.basicInfo.name,
+                hsnCode: product.stockAndMeasurement.hsn ?? "",
+                unitId: product.stockAndMeasurement.salesUomId,
+                unitName: product.stockAndMeasurement.salesUomName,
+                rate: `${computeSuggestedSalesRate(product, 0, null)}`,
+                costRate: getDefaultCostRate(product, 0),
+              });
+            });
           }}
         />
       ),
@@ -279,5 +314,5 @@ export function useSalesInvoiceLineColumns() {
       getSortValue: sortAccessors[column.key],
       renderCell: renderers[column.key],
     }));
-  }, [getProductById, searchProducts, searchWarehouses]);
+  }, [getProductById, getInventoryBalance, searchProducts, searchWarehouses]);
 }

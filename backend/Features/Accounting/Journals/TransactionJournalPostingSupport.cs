@@ -277,12 +277,6 @@ internal static class TransactionJournalPostingSupport
                 $"Configured {label} ledger must be active.");
         }
 
-        if (!ledger.AllowManualPosting)
-        {
-            return ConfiguredLedgerResult.Invalid(
-                $"Configured {label} ledger must allow posting.");
-        }
-
         if (ledger.IsBillWise)
         {
             return ConfiguredLedgerResult.Invalid(

@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import type { PurchaseOrder } from "@/redux/api/purchaseOrderApi";
+import type { GoodsReceiptNote } from "@/redux/api/goodsReceiptNoteApi";
 import {
   createEmptyPurchaseInvoiceAddition,
   createEmptyPurchaseInvoiceLine,
@@ -43,6 +44,7 @@ type PurchaseInvoiceFormContextValue = {
   addAddition: () => void;
   removeAddition: (rowId: string) => void;
   hydrateFromPurchaseOrder: (purchaseOrder: PurchaseOrder) => void;
+  hydrateFromGoodsReceiptNote: (grn: GoodsReceiptNote) => void;
   reset: () => void;
 };
 
@@ -212,6 +214,43 @@ export function PurchaseInvoiceFormProvider({
                       mrp: `${item.rate}`,
                       warehouseId: item.warehouseId,
                       warehouseName: item.warehouseName ?? "",
+                    }),
+                  )
+                : current.items,
+          }),
+        ),
+      hydrateFromGoodsReceiptNote: (grn) =>
+        setState((current) =>
+          recalculatePurchaseInvoiceState({
+            ...current,
+            sourceRef: {
+              type: "GoodsReceipt",
+              referenceId: grn.id,
+              no: grn.document.no,
+            },
+            vendorInformation: {
+              vendorId: grn.vendorInformation.vendorId,
+              vendorLabel: grn.vendorInformation.vendorNameSnapshot,
+              address: grn.vendorInformation.address,
+              attention: grn.vendorInformation.attention ?? "",
+              phone: grn.vendorInformation.phone ?? "",
+            },
+            items:
+              grn.items.length > 0
+                ? grn.items.map((item, index) =>
+                    createEmptyPurchaseInvoiceLine(index + 1, {
+                      productId: item.productId,
+                      productNameSnapshot: item.productNameSnapshot,
+                      hsnCode: item.hsnCode ?? "",
+                      unitId: item.unitId,
+                      unitName: item.unitName,
+                      warehouseId: item.warehouseId,
+                      warehouseName: item.warehouseName ?? "",
+                      rate: `${item.rate}`,
+                      quantity: `${item.quantity}`,
+                      foc: `${item.focQuantity}`,
+                      discountPercent: `${item.discountPercent}`,
+                      sellingRate: `${item.sellingRate}`,
                     }),
                   )
                 : current.items,

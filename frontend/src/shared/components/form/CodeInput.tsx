@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { useLazyGetNextCodeQuery } from "@/redux/api/codeGeneratorApi";
 
 interface CodeInputProps {
@@ -40,7 +41,7 @@ export default function CodeInput({
             disabled={isFetching || disabled}
             className="text-xs text-brand-500 hover:text-brand-600 disabled:opacity-40 dark:text-brand-400 dark:hover:text-brand-300"
           >
-            {isFetching ? "Generating..." : "Generate"}
+            {isFetching ? <Loader2 size={12} className="animate-spin" /> : "Generate"}
           </button>
         </div>
       )}

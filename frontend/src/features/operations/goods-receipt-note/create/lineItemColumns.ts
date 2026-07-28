@@ -17,6 +17,7 @@ export type GoodsReceiptLineColumnKey =
   | "manufacturingDateUtc"
   | "expiryDateUtc"
   | "remark"
+  | "profitPercent"
   | "sellingRate";
 
 export type GoodsReceiptLineColumnNature =
@@ -52,7 +53,8 @@ export const GOODS_RECEIPT_LINE_COLUMNS: GoodsReceiptLineColumnMeta[] = [
   { key: "manufacturingDateUtc", label: "Mfg Date", nature: "input", defaultSelected: false, defaultWidth: 130, minWidth: 120 },
   { key: "expiryDateUtc", label: "Exp Date", nature: "input", defaultSelected: false, defaultWidth: 130, minWidth: 120 },
   { key: "remark", label: "Remark", nature: "input", defaultSelected: true, defaultWidth: 180, minWidth: 140 },
-  { key: "sellingRate", label: "S Rate", nature: "input", defaultSelected: true, defaultWidth: 110, minWidth: 90, align: "right" },
+  { key: "profitPercent", label: "Profit %", nature: "input", defaultSelected: true, defaultWidth: 110, minWidth: 90, align: "right" },
+  { key: "sellingRate", label: "S Rate", nature: "readonly", defaultSelected: true, defaultWidth: 110, minWidth: 90, align: "right" },
 ];
 
 export const DEFAULT_GOODS_RECEIPT_LINE_COLUMN_KEYS =

@@ -63,14 +63,14 @@ export default function FinancialDetailsSection() {
         </div>
 
         <div>
-          <label className={labelClass}>Invoice No</label>
+          <label className={labelClass}>Customer PO / Ref No</label>
           <input
             className={inputClass}
             value={state.financialDetails.invoiceNo}
             onChange={(event) =>
               setFinancialDetails({ invoiceNo: event.target.value })
             }
-            placeholder="Customer invoice number"
+            placeholder="Customer's PO or reference number"
           />
         </div>
 

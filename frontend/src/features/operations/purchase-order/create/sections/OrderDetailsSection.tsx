@@ -1,12 +1,13 @@
 import { usePurchaseOrderForm } from "../PurchaseOrderFormContext";
 import TransactionSectionCard from "@/features/operations/shared/TransactionSectionCard";
+import CodeInput from "@/shared/components/form/CodeInput";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
 const labelClass = "mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 export default function OrderDetailsSection() {
-  const { state, setOrderDetails } = usePurchaseOrderForm();
+  const { state, setOrderDetails, setProductInformation } = usePurchaseOrderForm();
   const { orderDetails } = state;
 
   return (
@@ -24,12 +25,13 @@ export default function OrderDetailsSection() {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Order No</label>
-          <input
-            className={inputClass}
+          <CodeInput
+            entity="purchase-order"
+            label="Order No"
+            required
             value={orderDetails.no}
-            onChange={(event) => setOrderDetails({ no: event.target.value })}
-            placeholder="PO-0001"
+            onChange={(value) => setOrderDetails({ no: value })}
+            placeholder="PO-001"
           />
         </div>
         <div>
@@ -57,6 +59,24 @@ export default function OrderDetailsSection() {
             className={inputClass}
             value={orderDetails.deliveryDate}
             onChange={(event) => setOrderDetails({ deliveryDate: event.target.value })}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Reference</label>
+          <input
+            className={inputClass}
+            value={state.productInformation.reference ?? ""}
+            onChange={(event) => setProductInformation({ reference: event.target.value })}
+            placeholder="TELEPHONIC / EMAIL / RFQ"
+          />
+        </div>
+        <div>
+          <label className={labelClass}>MR No</label>
+          <input
+            className={inputClass}
+            value={state.productInformation.mrNo ?? ""}
+            onChange={(event) => setProductInformation({ mrNo: event.target.value })}
+            placeholder="Material request no."
           />
         </div>
       </div>

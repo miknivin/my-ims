@@ -133,6 +133,7 @@ export default function CategoryForm({ category, onClose }: CategoryFormProps) {
       <div>
         <Label>Parent Category</Label>
         <AutocompleteSelect<Category, Category[]>
+          selectedKey={parentCategoryId || null}
           value={parentCategoryLabel}
           placeholder="Search parent category"
           search={(keyword) =>

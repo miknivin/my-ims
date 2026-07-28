@@ -78,6 +78,7 @@ export interface GoodsReceiptLineState {
   manufacturingDateUtc: string;
   expiryDateUtc: string;
   remark: string;
+  profitPercent: string;
   sellingRate: string;
   purchaseOrderLineId: string | null;
 }
@@ -130,6 +131,7 @@ export function createEmptyGoodsReceiptLine(
     manufacturingDateUtc: "",
     expiryDateUtc: "",
     remark: "",
+    profitPercent: "0",
     sellingRate: "0",
     purchaseOrderLineId: null,
     ...defaults,
@@ -230,6 +232,9 @@ export function recalculateGoodsReceiptLine(line: GoodsReceiptLineState) {
   const grossAmount = roundAmount(quantity * rate);
   const discountAmount = roundAmount((grossAmount * discountPercent) / 100);
   const total = roundAmount(grossAmount - discountAmount);
+  const costPerUnit = quantity > 0 ? roundAmount(total / quantity) : 0;
+  const profitPercent = parseNumber(line.profitPercent);
+  const sellingRate = roundAmount(costPerUnit * (1 + profitPercent / 100));
 
   return {
     ...line,
@@ -237,6 +242,7 @@ export function recalculateGoodsReceiptLine(line: GoodsReceiptLineState) {
     discountAmount,
     taxableAmount: total,
     total,
+    sellingRate: `${sellingRate}`,
   };
 }
 

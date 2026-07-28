@@ -27,7 +27,8 @@ export type LookupSource =
   | "categories"
   | "customers"
   | "vendors"
-  | "uoms";
+  | "uoms"
+  | "salespersons";
 
 export interface LookupResolveItem {
   source: LookupSource;

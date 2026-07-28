@@ -1,13 +1,17 @@
-import { useLazyGetVendorByIdQuery } from "@/redux/api/vendorApi";
+import { useState } from "react";
+import { useLazyGetVendorByIdQuery, Vendor } from "@/redux/api/vendorApi";
 import { useLazySearchLookupQuery } from "@/redux/api/lookupApi";
+import { useGetBillWisePaymentOutstandingInvoicesQuery } from "@/redux/api/billWisePaymentApi";
 import { LookupOption } from "@/shared/types/filtering";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
 import TransactionSectionCard from "@/features/operations/shared/TransactionSectionCard";
+import QuickAddVendorModal from "@/shared/components/quick-add/QuickAddVendorModal";
 import { usePurchaseInvoiceForm } from "../PurchaseInvoiceFormContext";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
-const labelClass = "mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300";
+const labelClass =
+  "mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300";
 const areaClass =
   "w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
 
@@ -16,11 +20,37 @@ export default function VendorInformationSection() {
     usePurchaseInvoiceForm();
   const [searchLookup] = useLazySearchLookupQuery();
   const [getVendorById] = useLazyGetVendorByIdQuery();
+  const [quickAdd, setQuickAdd] = useState({ open: false, keyword: "" });
+
+  const hydrateVendor = (vendor: Vendor) => {
+    setVendorInformation({
+      vendorId: vendor.id,
+      vendorLabel: vendor.basicInfo.name,
+      address: vendor.addressAndContact.address ?? "",
+      attention: vendor.addressAndContact.contactName ?? "",
+      phone: vendor.addressAndContact.phone ?? "",
+    });
+    setFinancialDetails({
+      currencyId: vendor.creditAndFinance.currencyId,
+      currencyCode: vendor.creditAndFinance.currencyCode ?? "",
+    });
+  };
+
+  const vendorId = state.vendorInformation.vendorId;
+  const { data: outstandingInvoices, isFetching: isFetchingOutstanding } =
+    useGetBillWisePaymentOutstandingInvoicesQuery(vendorId ?? "", {
+      skip: !vendorId,
+    });
+
+  const totalOutstanding = outstandingInvoices
+    ? outstandingInvoices.reduce((sum, inv) => sum + inv.outstandingBalance, 0)
+    : null;
 
   return (
+    <>
     <TransactionSectionCard title="Vendor Information">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div>
+        <div className="md:col-span-2">
           <label className={labelClass}>Vendor</label>
           <AutocompleteSelect
             value={state.vendorInformation.vendorLabel}
@@ -47,21 +77,26 @@ export default function VendorInformationSection() {
 
               try {
                 const vendor = await getVendorById(item.id).unwrap();
-                setVendorInformation({
-                  vendorId: vendor.id,
-                  vendorLabel: vendor.basicInfo.name,
-                  address: vendor.addressAndContact.address ?? "",
-                  attention: vendor.addressAndContact.contactName ?? "",
-                  phone: vendor.addressAndContact.phone ?? "",
-                });
-                setFinancialDetails({
-                  currencyId: vendor.creditAndFinance.currencyId,
-                  currencyCode: vendor.creditAndFinance.currencyCode ?? "",
-                });
+                hydrateVendor(vendor);
               } catch {
                 // Keep the selected vendor label if detail hydration fails.
               }
             }}
+            onNoMatchClick={(kw) => setQuickAdd({ open: true, keyword: kw })}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Outstanding Payable</label>
+          <input
+            readOnly
+            className={`${inputClass} cursor-default bg-gray-50 dark:bg-gray-800`}
+            value={
+              isFetchingOutstanding
+                ? "Loading..."
+                : totalOutstanding !== null
+                  ? totalOutstanding.toFixed(2)
+                  : "—"
+            }
           />
         </div>
         <div>
@@ -78,7 +113,7 @@ export default function VendorInformationSection() {
         <div className="md:col-span-2">
           <label className={labelClass}>Vendor Address</label>
           <textarea
-            rows={3}
+            rows={2}
             className={areaClass}
             value={state.vendorInformation.address}
             onChange={(event) =>
@@ -87,7 +122,7 @@ export default function VendorInformationSection() {
             placeholder="Vendor billing address"
           />
         </div>
-        <div>
+        <div className="md:col-span-2">
           <label className={labelClass}>Vendor Phone</label>
           <input
             className={inputClass}
@@ -100,5 +135,15 @@ export default function VendorInformationSection() {
         </div>
       </div>
     </TransactionSectionCard>
+    <QuickAddVendorModal
+      open={quickAdd.open}
+      keyword={quickAdd.keyword}
+      onClose={() => setQuickAdd({ open: false, keyword: "" })}
+      onSuccess={(vendor) => {
+        hydrateVendor(vendor);
+        setQuickAdd({ open: false, keyword: "" });
+      }}
+    />
+    </>
   );
 }

@@ -83,6 +83,7 @@ export default function StockAndMeasurementSection() {
     <div className="mb-2">
       <Label>{label}</Label>
       <AutocompleteSelect<LookupOption, LookupOption[]>
+        selectedKey={state.stockAndMeasurement[key] || null}
         value={resolvedLabelMap[key] ?? ""}
         placeholder="Search UOM"
         search={(keyword) =>

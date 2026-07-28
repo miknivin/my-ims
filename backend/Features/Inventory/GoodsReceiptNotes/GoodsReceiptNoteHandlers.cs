@@ -566,6 +566,16 @@ internal static class GoodsReceiptNoteHandlers
                 current.Status == PurchaseInvoiceStatus.Submitted,
             cancellationToken);
 
+    internal static async Task<IResult> PreviewPdfAsync(
+        CreateGoodsReceiptNoteRequest request,
+        GoodsReceiptNotePdfService pdfService,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await pdfService.GeneratePreviewPdfAsync(request, dbContext, cancellationToken);
+        return Results.File(pdfBytes, "application/pdf");
+    }
+
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private sealed record GoodsReceiptNoteBuildResult(

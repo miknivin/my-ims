@@ -66,6 +66,7 @@ export const authApi = createApi({
     getSession: builder.query<SessionResponse, void>({
       query: () => "/session",
       providesTags: ["Auth"],
+      keepUnusedDataFor: 300,
     }),
     login: builder.mutation<AuthResponse, LoginRequest>({
       query: (body) => ({

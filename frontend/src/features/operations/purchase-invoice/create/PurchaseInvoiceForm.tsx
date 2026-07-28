@@ -2,7 +2,10 @@ import { FormEvent, useState } from "react";
 import { SerializedError } from "@reduxjs/toolkit";
 import { FetchBaseQueryError } from "@reduxjs/toolkit/query";
 import { useNavigate } from "react-router";
-import { useCreatePurchaseInvoiceMutation } from "@/redux/api/purchaseInvoiceApi";
+import {
+  useCreatePurchaseInvoiceMutation,
+  usePreviewPurchaseInvoicePdfMutation,
+} from "@/redux/api/purchaseInvoiceApi";
 import ConfirmAlert from "@/shared/components/ui/alert/ConfirmAlert";
 import TransactionHeaderGrid from "@/features/operations/shared/TransactionHeaderGrid";
 import TransactionStickyActionBar from "@/features/operations/shared/TransactionStickyActionBar";
@@ -20,6 +23,7 @@ import FinancialDetailsSection from "./sections/FinancialDetailsSection";
 import OrderDetailsSection from "./sections/OrderDetailsSection";
 import ProcurementSection from "./sections/ProcurementSection";
 import VendorInformationSection from "./sections/VendorInformationSection";
+import PurchaseInvoicePdfPreviewModal from "../PurchaseInvoicePdfPreviewModal";
 
 function getMutationErrorMessage(
   error: FetchBaseQueryError | SerializedError | undefined,
@@ -40,9 +44,12 @@ function PurchaseInvoiceFormBody() {
   const navigate = useNavigate();
   const { state, reset } = usePurchaseInvoiceForm();
   const [createPurchaseInvoice] = useCreatePurchaseInvoiceMutation();
+  const [previewPdf] = usePreviewPurchaseInvoicePdfMutation();
   const [formError, setFormError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
   const [showSubmitAlert, setShowSubmitAlert] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const validateForm = () => {
     setFormError("");
@@ -104,8 +111,30 @@ function PurchaseInvoiceFormBody() {
     }
   };
 
+  const handlePreview = async () => {
+    setFormError("");
+    if (!validateForm()) return;
+
+    setIsPreviewing(true);
+    try {
+      const url = await previewPdf(toPurchaseInvoicePayload(state, "Draft")).unwrap();
+      setPreviewUrl(url);
+    } catch {
+      setFormError("Failed to generate PDF preview. Please try again.");
+    } finally {
+      setIsPreviewing(false);
+    }
+  };
+
+  const closePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <>
+      <PurchaseInvoicePdfPreviewModal url={previewUrl} onClose={closePreview} />
+      <form onSubmit={handleSubmit} className="space-y-6">
       <ConfirmAlert
         open={showSubmitAlert}
         title="Create purchase invoice?"
@@ -138,6 +167,7 @@ function PurchaseInvoiceFormBody() {
       <TransactionStickyActionBar
         isSaving={isSaving}
         primaryLabel="Create"
+        draftLabel="Save as Draft"
         onDraft={handleDraft}
         onReset={() => {
           reset();
@@ -145,8 +175,11 @@ function PurchaseInvoiceFormBody() {
           setFormError("");
         }}
         onCancel={() => navigate("/operations/purchase-invoice")}
+        onPreview={handlePreview}
+        isPreviewing={isPreviewing}
       />
     </form>
+    </>
   );
 }
 

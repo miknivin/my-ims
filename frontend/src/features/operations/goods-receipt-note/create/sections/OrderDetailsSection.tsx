@@ -3,6 +3,7 @@ import {
   useLazyGetPurchaseOrderByIdQuery,
 } from "@/redux/api/purchaseOrderApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import CodeInput from "@/shared/components/form/CodeInput";
 import TransactionSectionCard from "@/features/operations/shared/TransactionSectionCard";
 import { useGoodsReceiptForm } from "../GoodsReceiptFormContext";
 
@@ -40,12 +41,13 @@ export default function OrderDetailsSection() {
         </div>
 
         <div>
-          <label className={labelClass}>GRN No</label>
-          <input
-            className={inputClass}
+          <CodeInput
+            entity="goods-receipt"
+            label="GRN No"
+            required
             value={state.document.no}
-            onChange={(event) => setDocument({ no: event.target.value })}
-            placeholder="GRN-0001"
+            onChange={(value) => setDocument({ no: value })}
+            placeholder="GRN-001"
           />
         </div>
 
@@ -91,9 +93,9 @@ export default function OrderDetailsSection() {
               className="bg-transparent"
               placeholder="Search purchase order"
               search={(keyword) =>
-                searchPurchaseOrders({ keyword, limit: 10 }).unwrap()
+                searchPurchaseOrders({ keyword, page: 1, limit: 10 }).unwrap()
               }
-              getItems={(result) => result}
+              getItems={(result) => result.items}
               getOptionKey={(item) => item.id}
               getOptionLabel={(item) => item.no}
               onInputChange={(value) =>

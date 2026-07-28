@@ -68,6 +68,7 @@ export default function BasicInfoSection({ currentLedgerGroupId }: { currentLedg
             Ledger Group<span className="text-error-500">*</span>
           </Label>
           <AutocompleteSelect<LedgerGroup, LedgerGroup[]>
+            selectedKey={state.basicInfo.ledgerGroupId || null}
             value={selectedLedgerGroupLabel}
             placeholder="Search liability ledger group"
             search={(keyword) => {

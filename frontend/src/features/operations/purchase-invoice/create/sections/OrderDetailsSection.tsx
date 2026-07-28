@@ -2,7 +2,12 @@ import {
   useLazyGetPurchaseOrdersQuery,
   useLazyGetPurchaseOrderByIdQuery,
 } from "@/redux/api/purchaseOrderApi";
+import {
+  useLazyGetGoodsReceiptNotesQuery,
+  useLazyGetGoodsReceiptNoteByIdQuery,
+} from "@/redux/api/goodsReceiptNoteApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import CodeInput from "@/shared/components/form/CodeInput";
 import { usePurchaseInvoiceForm } from "../PurchaseInvoiceFormContext";
 import TransactionSectionCard from "@/features/operations/shared/TransactionSectionCard";
 
@@ -11,10 +16,12 @@ const inputClass =
 const labelClass = "mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300";
 
 export default function OrderDetailsSection() {
-  const { state, setDocument, setSourceRef, hydrateFromPurchaseOrder } =
+  const { state, setDocument, setSourceRef, hydrateFromPurchaseOrder, hydrateFromGoodsReceiptNote } =
     usePurchaseInvoiceForm();
   const [searchPurchaseOrders] = useLazyGetPurchaseOrdersQuery();
   const [getPurchaseOrderById] = useLazyGetPurchaseOrderByIdQuery();
+  const [fetchAllGrns] = useLazyGetGoodsReceiptNotesQuery();
+  const [getGrnById] = useLazyGetGoodsReceiptNoteByIdQuery();
   const { document, sourceRef } = state;
 
   return (
@@ -43,12 +50,13 @@ export default function OrderDetailsSection() {
         </div>
 
         <div>
-          <label className={labelClass}>Document No</label>
-          <input
-            className={inputClass}
+          <CodeInput
+            entity="purchase-invoice"
+            label="No"
+            required
             value={document.no}
-            onChange={(event) => setDocument({ no: event.target.value })}
-            placeholder="PI-0001"
+            onChange={(value) => setDocument({ no: value })}
+            placeholder="PI-001"
           />
         </div>
 
@@ -80,9 +88,9 @@ export default function OrderDetailsSection() {
               className="bg-transparent"
               placeholder="Search purchase order"
               search={(keyword) =>
-                searchPurchaseOrders({ keyword, limit: 10 }).unwrap()
+                searchPurchaseOrders({ keyword, page: 1, limit: 10 }).unwrap()
               }
-              getItems={(result) => result}
+              getItems={(result) => result.items}
               getOptionKey={(item) => item.id}
               getOptionLabel={(item) => item.no}
               onInputChange={(value) =>
@@ -115,16 +123,37 @@ export default function OrderDetailsSection() {
         {sourceRef.type === "GoodsReceipt" ? (
           <div className="md:col-span-2">
             <label className={labelClass}>Goods Receipt No</label>
-            <input
-              className={inputClass}
+            <AutocompleteSelect
               value={sourceRef.no}
-              onChange={(event) =>
-                setSourceRef({
-                  referenceId: null,
-                  no: event.target.value,
-                })
+              className="bg-transparent"
+              placeholder="Search goods receipt"
+              search={async (keyword) => {
+                const all = await fetchAllGrns(undefined).unwrap();
+                return all.filter((g) =>
+                  g.no.toLowerCase().includes(keyword.toLowerCase()),
+                );
+              }}
+              getItems={(result) => result}
+              getOptionKey={(item) => item.id}
+              getOptionLabel={(item) => item.no}
+              onInputChange={(value) =>
+                setSourceRef({ referenceId: null, no: value })
               }
-              placeholder="Enter GR number"
+              onSelect={async (item) => {
+                setSourceRef({
+                  referenceId: item?.id ?? null,
+                  no: item?.no ?? "",
+                });
+
+                if (!item) return;
+
+                try {
+                  const grn = await getGrnById(item.id).unwrap();
+                  hydrateFromGoodsReceiptNote(grn);
+                } catch {
+                  // Keep the selected reference number if hydration fails.
+                }
+              }}
             />
           </div>
         ) : null}

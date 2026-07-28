@@ -6,7 +6,10 @@ interface BreadcrumbProps {
 
 const PageBreadcrumb: React.FC<BreadcrumbProps> = ({ pageTitle }) => {
   const location = useLocation();
-  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const uuidPattern = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i;
+  const pathSegments = location.pathname
+    .split("/")
+    .filter((segment) => Boolean(segment) && !uuidPattern.test(segment));
 
   const breadcrumbs = pathSegments.map((segment, index) => {
     const path = `/${pathSegments.slice(0, index + 1).join("/")}`;

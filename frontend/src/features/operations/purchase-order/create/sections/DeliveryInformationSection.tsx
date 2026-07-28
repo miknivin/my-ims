@@ -5,7 +5,8 @@ import { usePurchaseOrderForm } from "../PurchaseOrderFormContext";
 
 const inputClass =
   "h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
-const labelClass = "mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300";
+const labelClass =
+  "mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300";
 const areaClass =
   "w-full rounded-lg border border-gray-300 bg-transparent px-4 py-3 text-sm text-gray-800 shadow-theme-xs placeholder:text-gray-400 focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
 
@@ -22,7 +23,9 @@ export default function DeliveryInformationSection() {
             value={state.deliveryInformation.warehouseName}
             className="bg-transparent"
             placeholder="Search warehouse"
-            search={(keyword) => searchWarehouses({ keyword, limit: 10 }).unwrap()}
+            search={(keyword) =>
+              searchWarehouses({ keyword, limit: 10 }).unwrap()
+            }
             getItems={(result) => result}
             getOptionKey={(item) => item.id}
             getOptionLabel={(item) =>
@@ -59,16 +62,16 @@ export default function DeliveryInformationSection() {
         <div className="md:col-span-2">
           <label className={labelClass}>Delivery Address</label>
           <textarea
-            rows={3}
+            rows={2}
             className={areaClass}
             value={state.deliveryInformation.address}
             onChange={(event) =>
               setDeliveryInformation({ address: event.target.value })
             }
-            placeholder="Editable delivery address snapshot"
+            placeholder="Delivery address"
           />
         </div>
-        <div>
+        <div className="md:col-span-2">
           <label className={labelClass}>Phone</label>
           <input
             className={inputClass}

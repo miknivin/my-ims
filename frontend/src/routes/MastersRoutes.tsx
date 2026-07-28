@@ -1,4 +1,8 @@
 import { Route } from "react-router";
+import RoleListPage from "@/features/masters/roles/RoleListPage";
+import RoleFormPage from "@/features/masters/roles/RoleFormPage";
+import UserListPage from "@/features/masters/users/UserListPage";
+import UserFormPage from "@/features/masters/users/UserFormPage";
 import CategoryMaster from "@/features/masters/pages/Masters/CategoryMaster";
 import CustomerFormPage from "@/features/masters/pages/Masters/CustomerFormPage";
 import CustomerMaster from "@/features/masters/pages/Masters/CustomerMaster";
@@ -7,7 +11,6 @@ import DiscountMaster from "@/features/masters/pages/Masters/DiscountMaster";
 import LedgerGroupMaster from "@/features/masters/pages/Masters/LedgerGroupMaster";
 import LedgerMaster from "@/features/masters/pages/Masters/LedgerMaster";
 import Masters from "@/features/masters/pages/Masters/Masters";
-import MastersPlaceholder from "@/features/masters/pages/Masters/MastersPlaceholder";
 import ProductFormPage from "@/features/masters/pages/Masters/ProductFormPage";
 import ProductMaster from "@/features/masters/pages/Masters/ProductMaster";
 import TaxFormPage from "@/features/masters/pages/Masters/TaxFormPage";
@@ -39,14 +42,11 @@ export const mastersRoutes = (
     <Route path="tax/new" element={<TaxFormPage />} />
     <Route path="tax/:taxId/edit" element={<TaxFormPage />} />
     <Route path="price-discount" element={<DiscountMaster />} />
-    <Route
-      path="users"
-      element={
-        <MastersPlaceholder
-          title="User / Role Master"
-          description="User and role master page placeholder is ready for later integration."
-        />
-      }
-    />
+    <Route path="roles" element={<RoleListPage />} />
+    <Route path="roles/new" element={<RoleFormPage />} />
+    <Route path="roles/:roleId/edit" element={<RoleFormPage />} />
+    <Route path="users" element={<UserListPage />} />
+    <Route path="users/new" element={<UserFormPage />} />
+    <Route path="users/:userId/edit" element={<UserFormPage />} />
   </Route>
 );

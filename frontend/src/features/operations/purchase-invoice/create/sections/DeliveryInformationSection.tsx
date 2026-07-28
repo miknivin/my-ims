@@ -58,9 +58,9 @@ export default function DeliveryInformationSection() {
               className="bg-transparent"
               placeholder="Search purchase order"
               search={(keyword) =>
-                searchPurchaseOrders({ keyword, limit: 10 }).unwrap()
+                searchPurchaseOrders({ keyword, page: 1, limit: 10 }).unwrap()
               }
-              getItems={(result) => result}
+              getItems={(result) => result.items}
               getOptionKey={(item) => item.id}
               getOptionLabel={(item) => item.no}
               onInputChange={(value) =>

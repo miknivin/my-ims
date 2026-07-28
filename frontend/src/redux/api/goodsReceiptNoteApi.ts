@@ -105,6 +105,7 @@ export interface GoodsReceiptNoteListItem {
 }
 
 export interface GoodsReceiptNotePayload {
+  status?: string | null;
   sourceRef: {
     mode: GoodsReceiptMode;
     purchaseOrderId: string | null;
@@ -215,14 +216,29 @@ export const goodsReceiptNoteApi = createApi({
       }),
       invalidatesTags: ["GoodsReceiptNote"],
     }),
+    previewGoodsReceiptNotePdf: builder.mutation<string, GoodsReceiptNotePayload>({
+      query: (body) => ({
+        url: "/preview-pdf",
+        method: "POST",
+        body,
+        responseHandler: async (response) => {
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        },
+        cache: "no-cache",
+      }),
+    }),
   }),
 });
 
 export const {
   useGetGoodsReceiptNotesQuery,
+  useLazyGetGoodsReceiptNotesQuery,
   useGetGoodsReceiptNoteByIdQuery,
+  useLazyGetGoodsReceiptNoteByIdQuery,
   useCreateGoodsReceiptNoteMutation,
   useUpdateGoodsReceiptNoteMutation,
   useDeleteGoodsReceiptNoteMutation,
+  usePreviewGoodsReceiptNotePdfMutation,
 } = goodsReceiptNoteApi;
 

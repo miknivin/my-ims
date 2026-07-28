@@ -4,7 +4,9 @@ using backend.Features.Masters.Products;
 using backend.Features.Masters.Uoms;
 using backend.Features.Masters.Vendors;
 using backend.Features.Masters.Warehouses;
+using backend.Infrastructure.Filtering;
 using backend.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Transactions.PurchaseOrders;
@@ -26,24 +28,24 @@ internal static class PurchaseOrderHandlers
     }
 
     internal static async Task<IResult> GetAllAsync(
-        string? keyword,
-        int? limit,
+        [AsParameters] PurchaseOrderFilter filter,
         AppDbContext dbContext,
         CancellationToken cancellationToken)
     {
-        var query = dbContext.PurchaseOrders.AsNoTracking();
-        var normalizedKeyword = keyword?.Trim();
-        if (!string.IsNullOrWhiteSpace(normalizedKeyword))
+        if (filter.FromDate is not null && filter.ToDate is not null && filter.FromDate > filter.ToDate)
         {
-            var pattern = $"%{normalizedKeyword}%";
-            query = query.Where(current =>
-                EF.Functions.ILike(current.OrderDetails.No, pattern) ||
-                EF.Functions.ILike(current.VendorInformation.VendorNameSnapshot, pattern));
+            return TypedResults.BadRequest(new ApiResponse<object>(false, "From date cannot be greater than to date.", null));
         }
 
-        var normalizedLimit = limit is > 0 ? Math.Min(limit.Value, 100) : 0;
-        var sortedQuery = query
-            .OrderByDescending(current => current.UpdatedAtUtc)
+        var page = filter.GetNormalizedPage();
+        var limit = filter.GetNormalizedLimit();
+
+        var query = ApplyPurchaseOrderFilters(dbContext.PurchaseOrders.AsNoTracking(), filter);
+        var total = await query.CountAsync(cancellationToken);
+
+        var items = await ApplyPurchaseOrderSorting(query, filter)
+            .Skip((page - 1) * limit)
+            .Take(limit)
             .Select(current => new PurchaseOrderListItemDto(
                 current.Id,
                 current.OrderDetails.No,
@@ -52,13 +54,49 @@ internal static class PurchaseOrderHandlers
                 current.Footer.NetTotal,
                 current.Status,
                 current.CreatedAtUtc,
-                current.UpdatedAtUtc));
+                current.UpdatedAtUtc))
+            .ToListAsync(cancellationToken);
 
-        var purchaseOrders = normalizedLimit > 0
-            ? await sortedQuery.Take(normalizedLimit).ToListAsync(cancellationToken)
-            : await sortedQuery.ToListAsync(cancellationToken);
+        var totalPages = total == 0 ? 0 : (int)Math.Ceiling(total / (double)limit);
+        var result = new PurchaseOrderPagedListDto(items, page, limit, total, totalPages);
 
-        return TypedResults.Ok(new ApiResponse<IReadOnlyList<PurchaseOrderListItemDto>>(true, "Purchase order list fetched successfully.", purchaseOrders));
+        return TypedResults.Ok(new ApiResponse<PurchaseOrderPagedListDto>(true, "Purchase order list fetched successfully.", result));
+    }
+
+    private static IQueryable<PurchaseOrder> ApplyPurchaseOrderFilters(
+        IQueryable<PurchaseOrder> query,
+        PurchaseOrderFilter filter)
+    {
+        var normalizedKeyword = filter.Keyword?.Trim();
+        var keywordPattern = $"%{normalizedKeyword}%";
+        var statusList = filter.Statuses
+            ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        return query
+            .WhereIf(filter.FromDate is not null, current => current.OrderDetails.Date >= filter.FromDate!.Value)
+            .WhereIf(filter.ToDate is not null, current => current.OrderDetails.Date <= filter.ToDate!.Value)
+            .WhereIf(filter.VendorId is not null, current => current.VendorInformation.VendorId == filter.VendorId!.Value)
+            .WhereIf(!string.IsNullOrWhiteSpace(filter.Status), current => current.Status == filter.Status)
+            .WhereIf(statusList != null && statusList.Count > 0, current => statusList!.Contains(current.Status))
+            .WhereIf(!string.IsNullOrWhiteSpace(normalizedKeyword), current =>
+                EF.Functions.ILike(current.OrderDetails.No, keywordPattern) ||
+                EF.Functions.ILike(current.VendorInformation.VendorNameSnapshot, keywordPattern));
+    }
+
+    private static IQueryable<PurchaseOrder> ApplyPurchaseOrderSorting(
+        IQueryable<PurchaseOrder> query,
+        PurchaseOrderFilter filter)
+    {
+        return filter.SortBy?.Trim() switch
+        {
+            "date" => query.OrderBy(current => current.OrderDetails.Date).ThenBy(current => current.OrderDetails.No),
+            "no" => query.OrderBy(current => current.OrderDetails.No),
+            "no_desc" => query.OrderByDescending(current => current.OrderDetails.No),
+            "vendor" => query.OrderBy(current => current.VendorInformation.VendorNameSnapshot),
+            "vendor_desc" => query.OrderByDescending(current => current.VendorInformation.VendorNameSnapshot),
+            _ => query.OrderByDescending(current => current.OrderDetails.Date).ThenByDescending(current => current.OrderDetails.No)
+        };
     }
 
     internal static async Task<IResult> GetByIdAsync(Guid id, AppDbContext dbContext, CancellationToken cancellationToken)
@@ -149,6 +187,111 @@ internal static class PurchaseOrderHandlers
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
         return TypedResults.Ok(new ApiResponse<PurchaseOrderDto>(true, "Purchase order updated successfully.", PurchaseOrderDto.FromEntity(updated)));
+    }
+
+    internal static async Task<IResult> UpdateAsync(
+        Guid id,
+        CreatePurchaseOrderRequest request,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var purchaseOrder = await BuildQuery(dbContext)
+            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+
+        if (purchaseOrder is null)
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase order not found.", null));
+
+        if (purchaseOrder.Status == PurchaseOrderStatuses.Cancelled)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, "Cannot edit a cancelled purchase order.", null));
+
+        var now = DateTime.UtcNow;
+
+        if (purchaseOrder.Status == PurchaseOrderStatuses.Submitted)
+        {
+            purchaseOrder.OrderDetails.DueDate = request.OrderDetails.DueDate;
+            purchaseOrder.OrderDetails.DeliveryDate = request.OrderDetails.DeliveryDate;
+            purchaseOrder.VendorInformation.Attention = NormalizeOptional(request.VendorInformation.Attention);
+            purchaseOrder.VendorInformation.Phone = NormalizeOptional(request.VendorInformation.Phone);
+            purchaseOrder.DeliveryInformation.Address = request.DeliveryInformation.Address?.Trim() ?? string.Empty;
+            purchaseOrder.DeliveryInformation.Attention = NormalizeOptional(request.DeliveryInformation.Attention);
+            purchaseOrder.DeliveryInformation.Phone = NormalizeOptional(request.DeliveryInformation.Phone);
+            purchaseOrder.Footer.Notes = NormalizeOptional(request.Footer.Notes);
+            purchaseOrder.Footer.Remarks = NormalizeOptional(request.Footer.Remarks);
+            purchaseOrder.UpdatedAtUtc = now;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            var submittedPo = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+            return TypedResults.Ok(new ApiResponse<PurchaseOrderDto>(true, "Purchase order updated successfully.", PurchaseOrderDto.FromEntity(submittedPo)));
+        }
+
+        var buildResult = BuildPurchaseOrderRequest(
+            request.OrderDetails, request.VendorInformation, request.FinancialDetails,
+            request.DeliveryInformation, request.ProductInformation, request.Items, request.Additions, request.Footer);
+
+        if (buildResult.Error is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
+
+        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, cancellationToken);
+        if (resolutionError is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+
+        buildResult.OrderDetails.No = purchaseOrder.OrderDetails.No;
+
+        purchaseOrder.OrderDetails.VoucherType = buildResult.OrderDetails.VoucherType;
+        purchaseOrder.OrderDetails.Date = buildResult.OrderDetails.Date;
+        purchaseOrder.OrderDetails.DueDate = buildResult.OrderDetails.DueDate;
+        purchaseOrder.OrderDetails.DeliveryDate = buildResult.OrderDetails.DeliveryDate;
+
+        purchaseOrder.VendorInformation.VendorId = buildResult.VendorInformation.VendorId;
+        purchaseOrder.VendorInformation.VendorNameSnapshot = buildResult.VendorInformation.VendorNameSnapshot;
+        purchaseOrder.VendorInformation.Address = buildResult.VendorInformation.Address;
+        purchaseOrder.VendorInformation.Attention = buildResult.VendorInformation.Attention;
+        purchaseOrder.VendorInformation.Phone = buildResult.VendorInformation.Phone;
+
+        purchaseOrder.FinancialDetails.PaymentMode = buildResult.FinancialDetails.PaymentMode;
+        purchaseOrder.FinancialDetails.CreditLimit = buildResult.FinancialDetails.CreditLimit;
+        purchaseOrder.FinancialDetails.CurrencyId = buildResult.FinancialDetails.CurrencyId;
+        purchaseOrder.FinancialDetails.CurrencyLabelSnapshot = buildResult.FinancialDetails.CurrencyLabelSnapshot;
+        purchaseOrder.FinancialDetails.Balance = buildResult.FinancialDetails.Balance;
+
+        purchaseOrder.DeliveryInformation.WarehouseId = buildResult.DeliveryInformation.WarehouseId;
+        purchaseOrder.DeliveryInformation.WarehouseNameSnapshot = buildResult.DeliveryInformation.WarehouseNameSnapshot;
+        purchaseOrder.DeliveryInformation.Address = buildResult.DeliveryInformation.Address;
+        purchaseOrder.DeliveryInformation.Attention = buildResult.DeliveryInformation.Attention;
+        purchaseOrder.DeliveryInformation.Phone = buildResult.DeliveryInformation.Phone;
+
+        purchaseOrder.ProductInformation.VendorProducts = buildResult.ProductInformation.VendorProducts;
+        purchaseOrder.ProductInformation.OwnProductsOnly = buildResult.ProductInformation.OwnProductsOnly;
+        purchaseOrder.ProductInformation.Reference = buildResult.ProductInformation.Reference;
+        purchaseOrder.ProductInformation.MrNo = buildResult.ProductInformation.MrNo;
+
+        purchaseOrder.Footer.Notes = buildResult.Footer.Notes;
+        purchaseOrder.Footer.Remarks = buildResult.Footer.Remarks;
+        purchaseOrder.Footer.Taxable = buildResult.Footer.Taxable;
+        purchaseOrder.Footer.Advance = buildResult.Footer.Advance;
+        purchaseOrder.Footer.Addition = buildResult.Footer.Addition;
+        purchaseOrder.Footer.Total = buildResult.Footer.Total;
+        purchaseOrder.Footer.Discount = buildResult.Footer.Discount;
+        purchaseOrder.Footer.Tax = buildResult.Footer.Tax;
+        purchaseOrder.Footer.NetTotal = buildResult.Footer.NetTotal;
+
+        foreach (var item in purchaseOrder.Items.ToList())
+            dbContext.Remove(item);
+        purchaseOrder.Items.Clear();
+        foreach (var item in buildResult.Items)
+        {
+            item.PurchaseOrderId = purchaseOrder.Id;
+            purchaseOrder.Items.Add(item);
+        }
+
+        purchaseOrder.Additions.Clear();
+        foreach (var addition in buildResult.Additions)
+            purchaseOrder.Additions.Add(addition);
+
+        purchaseOrder.UpdatedAtUtc = now;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var draftUpdated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        return TypedResults.Ok(new ApiResponse<PurchaseOrderDto>(true, "Purchase order updated successfully.", PurchaseOrderDto.FromEntity(draftUpdated)));
     }
 
     private static PurchaseOrderBuildResult BuildPurchaseOrderRequest(
@@ -499,6 +642,31 @@ internal static class PurchaseOrderHandlers
             (PurchaseOrderStatuses.Submitted, PurchaseOrderStatuses.Cancelled) => null,
             _ => "Only draft purchase orders can be submitted, and only draft or submitted purchase orders can be cancelled."
         };
+    }
+
+    internal static async Task<IResult> DownloadPdfAsync(
+        Guid id,
+        PurchaseOrderPdfService pdfService,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var purchaseOrder = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+        if (purchaseOrder is null)
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Purchase order not found.", null));
+
+        var pdfBytes = await pdfService.GeneratePdfAsync(purchaseOrder);
+        var fileName = $"PO-{purchaseOrder.OrderDetails.No}.pdf";
+        return Results.File(pdfBytes, "application/pdf", fileName);
+    }
+
+    internal static async Task<IResult> PreviewPdfAsync(
+        CreatePurchaseOrderRequest request,
+        PurchaseOrderPdfService pdfService,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await pdfService.GeneratePreviewPdfAsync(request, dbContext, cancellationToken);
+        return Results.File(pdfBytes, "application/pdf");
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

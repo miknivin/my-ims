@@ -513,3 +513,99 @@ export function toPurchaseOrderPayload(
     },
   };
 }
+
+export function fromPurchaseOrderDto(po: {
+  orderDetails: { voucherType: string; no: string; date: string; dueDate: string; deliveryDate: string };
+  vendorInformation: { vendorId: string; vendorNameSnapshot: string; address: string; attention: string | null; phone: string | null };
+  financialDetails: { paymentMode: string; creditLimit: number; currencyId: string | null; currencyLabelSnapshot: string | null; balance: number };
+  deliveryInformation: { warehouseId: string | null; warehouseNameSnapshot: string | null; address: string; attention: string | null; phone: string | null };
+  productInformation: { vendorProducts: string; ownProductsOnly: boolean; reference: string | null; mrNo: string | null };
+  items: Array<{ id: string; purchaseOrderId: string; itemId: string; itemNameSnapshot: string; hsnCode: string | null; quantity: number; unitId: string; unitName: string; rate: number; grossAmount: number; discountType: string; discountValue: number; discountAmount: number; taxableAmount: number; cgstRate: number; cgstAmount: number; sgstRate: number; sgstAmount: number; igstRate: number; igstAmount: number; lineTotal: number; warehouseId: string | null; receivedQty: number }>;
+  additions: Array<{ id: string; type: string; ledgerId: string | null; ledgerNameSnapshot: string; description: string | null; amount: number }>;
+  footer: { notes: string | null; remarks: string | null; taxable: boolean; addition: number; advance: number; total: number; discount: number; tax: number; netTotal: number };
+}): PurchaseOrderFormState {
+  return createPurchaseOrderFormState({
+    orderDetails: {
+      voucherType: po.orderDetails.voucherType,
+      no: po.orderDetails.no,
+      date: po.orderDetails.date,
+      dueDate: po.orderDetails.dueDate,
+      deliveryDate: po.orderDetails.deliveryDate,
+    },
+    vendorInformation: {
+      vendorId: po.vendorInformation.vendorId,
+      vendorLabel: po.vendorInformation.vendorNameSnapshot,
+      address: po.vendorInformation.address,
+      attention: po.vendorInformation.attention ?? "",
+      phone: po.vendorInformation.phone ?? "",
+    },
+    financialDetails: {
+      paymentMode: po.financialDetails.paymentMode,
+      creditLimit: String(po.financialDetails.creditLimit),
+      currencyId: po.financialDetails.currencyId,
+      currencyLabel: po.financialDetails.currencyLabelSnapshot ?? "",
+      balance: String(po.financialDetails.balance),
+    },
+    deliveryInformation: {
+      warehouseId: po.deliveryInformation.warehouseId,
+      warehouseName: po.deliveryInformation.warehouseNameSnapshot ?? "",
+      address: po.deliveryInformation.address,
+      attention: po.deliveryInformation.attention ?? "",
+      phone: po.deliveryInformation.phone ?? "",
+    },
+    productInformation: {
+      vendorProducts: po.productInformation.vendorProducts,
+      ownProductsOnly: po.productInformation.ownProductsOnly,
+      reference: po.productInformation.reference ?? "",
+      mrNo: po.productInformation.mrNo ?? "",
+    },
+    items: po.items.map((item) => ({
+      rowId: createLineId(),
+      id: item.id,
+      poId: item.purchaseOrderId,
+      itemId: item.itemId,
+      itemNameSnapshot: item.itemNameSnapshot,
+      hsnCode: item.hsnCode ?? "",
+      quantity: String(item.quantity),
+      unitId: item.unitId,
+      unitName: item.unitName,
+      rate: String(item.rate),
+      grossAmount: item.grossAmount,
+      discountType: item.discountType as "percentage" | "fixed",
+      discountValue: String(item.discountValue),
+      discountAmount: item.discountAmount,
+      taxableAmount: item.taxableAmount,
+      cgstRate: String(item.cgstRate),
+      cgstAmount: item.cgstAmount,
+      sgstRate: String(item.sgstRate),
+      sgstAmount: item.sgstAmount,
+      igstRate: String(item.igstRate),
+      igstAmount: item.igstAmount,
+      lineTotal: item.lineTotal,
+      warehouseId: item.warehouseId,
+      receivedQty: item.receivedQty,
+      remark: "",
+      frate: "0",
+      foc: "0",
+    })),
+    additions: po.additions.map((addition) => ({
+      rowId: createAdditionId(),
+      type: addition.type as "Addition" | "Deduction",
+      ledgerId: addition.ledgerId,
+      ledgerName: addition.ledgerNameSnapshot,
+      description: addition.description ?? "",
+      amount: String(addition.amount),
+    })),
+    footer: {
+      notes: po.footer.notes ?? "",
+      remarks: po.footer.remarks ?? "",
+      taxable: po.footer.taxable,
+      addition: po.footer.addition,
+      advance: String(po.footer.advance),
+      total: po.footer.total,
+      discount: po.footer.discount,
+      tax: po.footer.tax,
+      netTotal: po.footer.netTotal,
+    },
+  });
+}

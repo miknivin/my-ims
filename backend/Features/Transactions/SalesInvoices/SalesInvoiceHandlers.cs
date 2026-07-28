@@ -215,14 +215,17 @@ internal static class SalesInvoiceHandlers
             VoucherType = string.IsNullOrWhiteSpace(documentRequest.VoucherType) ? "SI" : documentRequest.VoucherType.Trim().ToUpperInvariant(),
             No = documentRequest.No?.Trim().ToUpperInvariant() ?? string.Empty,
             Date = documentRequest.Date,
-            DueDate = documentRequest.DueDate
+            DueDate = documentRequest.DueDate,
+            SalespersonName = NormalizeOptional(documentRequest.SalespersonName)
         };
 
         var customerInformation = new SalesInvoiceCustomerInformation
         {
             CustomerId = customerInformationRequest.CustomerId,
             CustomerNameSnapshot = customerInformationRequest.CustomerNameSnapshot?.Trim() ?? string.Empty,
-            Address = customerInformationRequest.Address?.Trim() ?? string.Empty
+            Address = customerInformationRequest.Address?.Trim() ?? string.Empty,
+            CustomerGstinSnapshot = NormalizeOptional(customerInformationRequest.CustomerGstinSnapshot),
+            ShippingAddress = NormalizeOptional(customerInformationRequest.ShippingAddress)
         };
 
         var financialDetails = new SalesInvoiceFinancialDetails
@@ -652,6 +655,32 @@ internal static class SalesInvoiceHandlers
         .Select(part => part!.Trim());
 
         return string.Join(", ", parts);
+    }
+
+    internal static async Task<IResult> DownloadPdfAsync(
+        Guid id,
+        SalesInvoicePdfService pdfService,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var si = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+        if (si is null)
+        {
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Sales invoice not found.", null));
+        }
+
+        var pdfBytes = await pdfService.GeneratePdfAsync(si);
+        return Results.File(pdfBytes, "application/pdf", $"SI-{si.Document.No}.pdf");
+    }
+
+    internal static async Task<IResult> PreviewPdfAsync(
+        CreateSalesInvoiceRequest request,
+        SalesInvoicePdfService pdfService,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var pdfBytes = await pdfService.GeneratePreviewPdfAsync(request, dbContext, cancellationToken);
+        return Results.File(pdfBytes, "application/pdf", "SI-Preview.pdf");
     }
 
     private static string? NormalizeOptional(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

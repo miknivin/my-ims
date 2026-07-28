@@ -189,6 +189,7 @@ export const {
   useGetBillWisePaymentsQuery,
   useGetBillWisePaymentByIdQuery,
   useGetBillWisePaymentOutstandingInvoicesQuery,
+  useLazyGetBillWisePaymentOutstandingInvoicesQuery,
   useCreateBillWisePaymentMutation,
   useUpdateBillWisePaymentMutation,
   useDeleteBillWisePaymentMutation,

@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import Button from "@/shared/components/ui/button/Button";
-import ComponentCard from "@/shared/components/common/ComponentCard";
 import AccountingSettingsSection from "./AccountingSettingsSection";
 import GeneralSettingsSection from "./GeneralSettingsSection";
 import InventorySettingsSection from "./InventorySettingsSection";
@@ -30,6 +29,7 @@ function SettingsFormContent() {
     handleSave,
   } = useSettingsForm();
 
+  const cardRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const isFixedRef = useRef(false);
@@ -40,17 +40,15 @@ function SettingsFormContent() {
   useEffect(() => {
     const sentinel = sentinelRef.current;
     const header = headerRef.current;
-    if (!sentinel || !header) return;
+    const card = cardRef.current;
+    if (!sentinel || !header || !card) return;
 
     const getNavbarHeight = () =>
       document.querySelector("header")?.offsetHeight ?? 0;
 
     const recalcFixedStyle = () => {
-      const parent = header.parentElement;
-      if (parent) {
-        const rect = parent.getBoundingClientRect();
-        setFixedStyle({ top: getNavbarHeight(), left: rect.left, width: rect.width });
-      }
+      const rect = card.getBoundingClientRect();
+      setFixedStyle({ top: getNavbarHeight(), left: rect.left, width: rect.width });
       setHeaderHeight(header.offsetHeight);
     };
 
@@ -70,6 +68,7 @@ function SettingsFormContent() {
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("resize", handleScroll);
+    handleScroll();
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
@@ -78,17 +77,20 @@ function SettingsFormContent() {
 
   if (isLoading) {
     return (
-      <ComponentCard title="" className="p-6">
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="text-sm text-gray-500 dark:text-gray-400">
           Loading settings...
         </div>
-      </ComponentCard>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <ComponentCard title="" className="p-0">
+      <div
+        ref={cardRef}
+        className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]"
+      >
         <div ref={sentinelRef} />
         <div
           ref={headerRef}
@@ -118,12 +120,23 @@ function SettingsFormContent() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {isFetching ? (
-              <span className="text-xs text-gray-500 dark:text-gray-400">Refreshing...</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Refreshing...
+              </span>
             ) : null}
-            <Button type="button" variant="outline" onClick={handleReset} disabled={!isDirty || isSaving}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              disabled={!isDirty || isSaving}
+            >
               Reset
             </Button>
-            <Button type="button" onClick={handleSave} disabled={isSaving || !isDirty}>
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving || !isDirty}
+            >
               {isSaving ? "Saving..." : "Save Settings"}
             </Button>
           </div>
@@ -145,7 +158,7 @@ function SettingsFormContent() {
           {activeTab === "inventory" ? <InventorySettingsSection /> : null}
           {activeTab === "accounting" ? <AccountingSettingsSection /> : null}
         </div>
-      </ComponentCard>
+      </div>
     </div>
   );
 }
@@ -157,4 +170,3 @@ export default function SettingsForm() {
     </SettingsFormProvider>
   );
 }
-

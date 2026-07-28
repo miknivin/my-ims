@@ -49,10 +49,6 @@ export default function SummaryFooterSection() {
             </select>
           </div>
 
-          <div className="rounded-xl border border-dashed border-gray-300 px-4 py-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-            Inventory valuation is company-controlled and not editable from the sales invoice.
-          </div>
-
           <label className="inline-flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
             <input
               type="checkbox"

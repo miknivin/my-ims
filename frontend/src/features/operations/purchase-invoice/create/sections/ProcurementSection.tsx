@@ -10,7 +10,7 @@ export default function ProcurementSection() {
 
   return (
     <TransactionSectionCard title="Product Information">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="flex flex-col gap-4">
         <div>
           <label className={labelClass}>Vendor Products</label>
           <select
@@ -26,19 +26,17 @@ export default function ProcurementSection() {
           </select>
         </div>
 
-        <div className="flex items-end">
-          <label className="inline-flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-              checked={state.productInformation.ownProductsOnly}
-              onChange={(event) =>
-                setProductInformation({ ownProductsOnly: event.target.checked })
-              }
-            />
-            Own products only
-          </label>
-        </div>
+        <label className="inline-flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+            checked={state.productInformation.ownProductsOnly}
+            onChange={(event) =>
+              setProductInformation({ ownProductsOnly: event.target.checked })
+            }
+          />
+          Own products only
+        </label>
       </div>
     </TransactionSectionCard>
   );

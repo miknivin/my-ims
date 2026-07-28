@@ -56,7 +56,7 @@ internal static class BillWisePaymentHandlers
             .AsNoTracking()
             .Where(current =>
                 current.VendorInformation.VendorId == vendorId &&
-                current.Status != PurchaseInvoiceStatus.Cancelled &&
+                current.Status == PurchaseInvoiceStatus.Submitted &&
                 current.FinancialDetails.Balance > 0)
             .OrderBy(current => current.Document.Date)
             .ThenBy(current => current.Document.No)

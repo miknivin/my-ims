@@ -2,7 +2,9 @@ import {
   useLazyGetSalesOrdersQuery,
   useLazyGetSalesOrderByIdQuery,
 } from "@/redux/api/salesOrderApi";
+import { useLazySearchLookupQuery } from "@/redux/api/lookupApi";
 import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
+import CodeInput from "@/shared/components/form/CodeInput";
 import TransactionSectionCard from "@/features/operations/shared/TransactionSectionCard";
 import { useSalesInvoiceForm } from "../SalesInvoiceFormContext";
 
@@ -15,6 +17,7 @@ export default function OrderDetailsSection() {
     useSalesInvoiceForm();
   const [searchSalesOrders] = useLazyGetSalesOrdersQuery();
   const [getSalesOrderById] = useLazyGetSalesOrderByIdQuery();
+  const [searchSalespersons] = useLazySearchLookupQuery();
   const { document, sourceRef } = state;
 
   return (
@@ -43,12 +46,29 @@ export default function OrderDetailsSection() {
         </div>
 
         <div>
-          <label className={labelClass}>Invoice No</label>
-          <input
-            className={inputClass}
+          <CodeInput
+            entity="sales-invoice"
+            label="Invoice No"
             value={document.no}
-            onChange={(event) => setDocument({ no: event.target.value })}
+            onChange={(value) => setDocument({ no: value })}
             placeholder="SI-0001"
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Salesperson</label>
+          <AutocompleteSelect
+            value={document.salespersonName}
+            className="bg-transparent"
+            placeholder="Search salesperson"
+            search={(keyword) =>
+              searchSalespersons({ source: "salespersons", keyword }).unwrap()
+            }
+            getItems={(result) => result}
+            getOptionKey={(item) => item.id}
+            getOptionLabel={(item) => item.label}
+            onInputChange={(value) => setDocument({ salespersonName: value })}
+            onSelect={(item) => setDocument({ salespersonName: item?.label ?? "" })}
           />
         </div>
 

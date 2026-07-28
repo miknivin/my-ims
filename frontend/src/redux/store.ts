@@ -7,6 +7,7 @@ import { codeGeneratorApi } from "./api/codeGeneratorApi";
 import { customerApi } from "./api/customerApi";
 import { currencyApi } from "./api/currencyApi";
 import { discountApi } from "./api/discountApi";
+import { deliveryNoteApi } from "./api/deliveryNoteApi";
 import { goodsReceiptNoteApi } from "./api/goodsReceiptNoteApi";
 import { journalEntryApi } from "./api/journalEntryApi";
 import { journalVoucherApi } from "./api/journalVoucherApi";
@@ -23,10 +24,13 @@ import { salesCreditNoteApi } from "./api/salesCreditNoteApi";
 import { salesDebitNoteApi } from "./api/salesDebitNoteApi";
 import { salesInvoiceApi } from "./api/salesInvoiceApi";
 import { financialStatementsApi } from "./api/financialStatementsApi";
+import { inventoryApi } from "./api/inventoryApi";
 import { inventoryReportsApi } from "./api/inventoryReportsApi";
 import { purchaseRegisterReportApi } from "./api/purchaseRegisterReportApi";
 import { receivablesPayablesApi } from "./api/receivablesPayablesApi";
 import { salesRegisterReportApi } from "./api/salesRegisterReportApi";
+import { roleApi } from "./api/roleApi";
+import { userApi } from "./api/userApi";
 import { salesOrderApi } from "./api/salesOrderApi";
 import { settingsApi } from "./api/settingsApi";
 import { taxApi } from "./api/taxApi";
@@ -44,6 +48,7 @@ export const store = configureStore({
     [customerApi.reducerPath]: customerApi.reducer,
     [currencyApi.reducerPath]: currencyApi.reducer,
     [discountApi.reducerPath]: discountApi.reducer,
+    [deliveryNoteApi.reducerPath]: deliveryNoteApi.reducer,
     [goodsReceiptNoteApi.reducerPath]: goodsReceiptNoteApi.reducer,
     [journalEntryApi.reducerPath]: journalEntryApi.reducer,
     [journalVoucherApi.reducerPath]: journalVoucherApi.reducer,
@@ -60,10 +65,13 @@ export const store = configureStore({
     [salesDebitNoteApi.reducerPath]: salesDebitNoteApi.reducer,
     [salesInvoiceApi.reducerPath]: salesInvoiceApi.reducer,
     [financialStatementsApi.reducerPath]: financialStatementsApi.reducer,
+    [inventoryApi.reducerPath]: inventoryApi.reducer,
     [inventoryReportsApi.reducerPath]: inventoryReportsApi.reducer,
     [purchaseRegisterReportApi.reducerPath]: purchaseRegisterReportApi.reducer,
     [receivablesPayablesApi.reducerPath]: receivablesPayablesApi.reducer,
     [salesRegisterReportApi.reducerPath]: salesRegisterReportApi.reducer,
+    [roleApi.reducerPath]: roleApi.reducer,
+    [userApi.reducerPath]: userApi.reducer,
     [salesOrderApi.reducerPath]: salesOrderApi.reducer,
     [settingsApi.reducerPath]: settingsApi.reducer,
     [taxApi.reducerPath]: taxApi.reducer,
@@ -81,6 +89,7 @@ export const store = configureStore({
       customerApi.middleware,
       currencyApi.middleware,
       discountApi.middleware,
+      deliveryNoteApi.middleware,
       goodsReceiptNoteApi.middleware,
       journalEntryApi.middleware,
       journalVoucherApi.middleware,
@@ -97,10 +106,13 @@ export const store = configureStore({
       salesDebitNoteApi.middleware,
       salesInvoiceApi.middleware,
       financialStatementsApi.middleware,
+      inventoryApi.middleware,
       inventoryReportsApi.middleware,
       purchaseRegisterReportApi.middleware,
       receivablesPayablesApi.middleware,
       salesRegisterReportApi.middleware,
+      roleApi.middleware,
+      userApi.middleware,
       salesOrderApi.middleware,
       settingsApi.middleware,
       taxApi.middleware,

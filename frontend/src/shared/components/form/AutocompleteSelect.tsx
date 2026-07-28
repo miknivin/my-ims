@@ -255,6 +255,33 @@ export default function AutocompleteSelect<TItem, TResult>({
 
   const trimmedInputValue = inputValue.trim();
 
+  const addButton =
+    onNoMatchClick && trimmedInputValue.length >= minChars ? (
+      <button
+        type="button"
+        onClick={() => {
+          onNoMatchClick(trimmedInputValue);
+          setIsOpen(false);
+        }}
+        className="flex w-full items-center gap-1.5 border-t border-gray-100 px-4 py-2.5 text-left text-sm font-semibold text-white transition bg-brand-500 hover:bg-brand-600 dark:border-white/[0.06]"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="shrink-0"
+        >
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Add &quot;{trimmedInputValue}&quot;
+      </button>
+    ) : null;
+
   const dropdown = isOpen ? (
     <div
       ref={dropdownRef}
@@ -266,44 +293,36 @@ export default function AutocompleteSelect<TItem, TResult>({
           Searching...
         </div>
       ) : options.length > 0 ? (
-        <ul ref={listRef} className="max-h-72 overflow-y-auto py-2">
-          {options.map((item, index) => (
-            <li key={getOptionKey(item)}>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSelect(item);
-                }}
-                onMouseEnter={() => setHighlightedIndex(index)}
-                className={`block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition dark:text-gray-200 ${
-                  index === highlightedIndex
-                    ? "bg-gray-100 dark:bg-white/[0.06]"
-                    : "hover:bg-gray-100 dark:hover:bg-white/[0.06]"
-                }`}
-              >
-                {getOptionLabel(item)}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul ref={listRef} className="max-h-64 overflow-y-auto py-2">
+            {options.map((item, index) => (
+              <li key={getOptionKey(item)}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(item);
+                  }}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  className={`block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition dark:text-gray-200 ${
+                    index === highlightedIndex
+                      ? "bg-gray-100 dark:bg-white/[0.06]"
+                      : "hover:bg-gray-100 dark:hover:bg-white/[0.06]"
+                  }`}
+                >
+                  {getOptionLabel(item)}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {addButton}
+        </>
       ) : (
         <div className="px-4 py-3">
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {noResultsText}
           </p>
-          {onNoMatchClick && trimmedInputValue.length >= minChars ? (
-            <button
-              type="button"
-              onClick={() => {
-                onNoMatchClick(trimmedInputValue);
-                setIsOpen(false);
-              }}
-              className="mt-3 inline-flex items-center rounded-lg bg-brand-500 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-600"
-            >
-              Add "{trimmedInputValue}"
-            </button>
-          ) : null}
+          {addButton && <div className="mt-1">{addButton}</div>}
         </div>
       )}
     </div>

@@ -1,8 +1,8 @@
 namespace backend.Features.Transactions.SalesInvoices;
 
 public sealed record SalesInvoiceSourceReferenceDto(string Type, Guid? ReferenceId, string ReferenceNo);
-public sealed record SalesInvoiceDocumentDto(string VoucherType, string No, DateOnly Date, DateOnly DueDate);
-public sealed record SalesInvoiceCustomerInformationDto(Guid CustomerId, string CustomerNameSnapshot, string Address);
+public sealed record SalesInvoiceDocumentDto(string VoucherType, string No, DateOnly Date, DateOnly DueDate, string? SalespersonName);
+public sealed record SalesInvoiceCustomerInformationDto(Guid CustomerId, string CustomerNameSnapshot, string Address, string? CustomerGstinSnapshot, string? ShippingAddress);
 public sealed record SalesInvoiceFinancialDetailsDto(string PaymentMode, string? InvoiceNo, string? LrNo, Guid? CurrencyId, string? CurrencyCodeSnapshot, string? CurrencySymbolSnapshot, decimal Balance);
 public sealed record SalesInvoiceGeneralDto(string? Notes, bool Taxable, string TaxApplication, bool InterState);
 public sealed record SalesInvoiceLineItemDto(Guid Id, Guid SalesInvoiceId, int Sno, Guid ProductId, string? ProductCodeSnapshot, string ProductNameSnapshot, string? HsnCode, Guid UnitId, string UnitName, decimal Quantity, decimal Rate, decimal GrossAmount, decimal DiscountPercent, decimal DiscountAmount, decimal TaxableAmount, decimal TaxPercent, decimal TaxAmount, decimal CostRate, decimal CogsAmount, decimal GrossProfitAmount, decimal LineTotal, Guid? WarehouseId, string? WarehouseName);
@@ -23,11 +23,14 @@ public sealed record SalesInvoiceDto(Guid Id, SalesInvoiceSourceReferenceDto Sou
                 salesInvoice.Document.VoucherType,
                 salesInvoice.Document.No,
                 salesInvoice.Document.Date,
-                salesInvoice.Document.DueDate),
+                salesInvoice.Document.DueDate,
+                salesInvoice.Document.SalespersonName),
             new SalesInvoiceCustomerInformationDto(
                 salesInvoice.CustomerInformation.CustomerId,
                 salesInvoice.CustomerInformation.CustomerNameSnapshot,
-                salesInvoice.CustomerInformation.Address),
+                salesInvoice.CustomerInformation.Address,
+                salesInvoice.CustomerInformation.CustomerGstinSnapshot,
+                salesInvoice.CustomerInformation.ShippingAddress),
             new SalesInvoiceFinancialDetailsDto(
                 ToPaymentModeLabel(salesInvoice.FinancialDetails.PaymentMode),
                 salesInvoice.FinancialDetails.InvoiceNo,

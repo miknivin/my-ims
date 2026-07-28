@@ -27,6 +27,8 @@ internal static class CodeGeneratorHandler
         ["purchase-invoice"]  = new("purchase_invoices",   "no",       "PI"),
         ["sales-invoice"]     = new("sales_invoices",      "no",       "SI"),
         ["goods-receipt"]     = new("goods_receipt_notes", "no",       "GRN"),
+        ["delivery-note"]     = new("delivery_notes",      "no",       "DN"),
+        ["user"]              = new("users",               "\"EmployeeCode\"", "EMP"),
     };
 
     internal static async Task<IResult> GenerateAsync(
