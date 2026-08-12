@@ -9,6 +9,7 @@ public static class DeliveryNoteEndpoints
         group.MapGet("/", DeliveryNoteHandlers.GetAllAsync);
         group.MapGet("/{id:guid}", DeliveryNoteHandlers.GetByIdAsync);
         group.MapPost("/", DeliveryNoteHandlers.CreateAsync);
+        group.MapPut("/{id:guid}", DeliveryNoteHandlers.UpdateAsync);
         group.MapPost("/preview-pdf", DeliveryNoteHandlers.PreviewPdfAsync);
         group.MapGet("/{id:guid}/pdf", DeliveryNoteHandlers.DownloadPdfAsync);
         group.MapPatch("/{id:guid}", DeliveryNoteHandlers.UpdateStatusAsync);

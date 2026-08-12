@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle, Download, XCircle } from "lucide-react";
+import { CheckCircle, Download, Loader2, XCircle } from "lucide-react";
 import {
   SalesInvoiceListItem,
   useDownloadSalesInvoicePdfMutation,
@@ -193,9 +193,13 @@ export default function SalesInvoiceTable({
                           title="Download PDF"
                           disabled={downloadingId === salesInvoice.id}
                           onClick={() => handleDownload(salesInvoice.id, salesInvoice.no)}
-                          className="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 disabled:opacity-40 dark:hover:bg-white/[0.06] dark:hover:text-gray-300"
+                          className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
                         >
-                          <Download size={15} />
+                          {downloadingId === salesInvoice.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Download size={14} />
+                          )}
                         </button>
                         {salesInvoice.status === "Draft" ? (
                           <button
@@ -205,22 +209,30 @@ export default function SalesInvoiceTable({
                             onClick={() =>
                               setConfirm({ id: salesInvoice.id, no: salesInvoice.no, type: "submit" })
                             }
-                            className="rounded p-1 text-gray-400 transition hover:bg-success-50 hover:text-success-600 disabled:opacity-40 dark:hover:bg-success-500/10 dark:hover:text-success-400"
+                            className="rounded-lg border border-green-200 p-2 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-green-500/30 dark:text-green-400 dark:hover:bg-green-500/10"
                           >
-                            <CheckCircle size={15} />
+                            {actionId === salesInvoice.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <CheckCircle size={14} />
+                            )}
                           </button>
                         ) : null}
                         {salesInvoice.status === "Submitted" ? (
                           <button
                             type="button"
-                            title="Cancel"
+                            title="Cancel Invoice"
                             disabled={actionId === salesInvoice.id}
                             onClick={() =>
                               setConfirm({ id: salesInvoice.id, no: salesInvoice.no, type: "cancel" })
                             }
-                            className="rounded p-1 text-gray-400 transition hover:bg-error-50 hover:text-error-600 disabled:opacity-40 dark:hover:bg-error-500/10 dark:hover:text-error-400"
+                            className="rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
                           >
-                            <XCircle size={15} />
+                            {actionId === salesInvoice.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <XCircle size={14} />
+                            )}
                           </button>
                         ) : null}
                       </div>

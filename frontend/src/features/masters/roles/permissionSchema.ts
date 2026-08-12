@@ -62,7 +62,6 @@ export const PERMISSION_SCHEMA: PermissionGroup[] = [
     group: "Accounting",
     modules: [
       { key: "accounting.journal-vouchers", label: "Journal Vouchers", actions: ["view", "create", "delete"] },
-      { key: "accounting.journal-entries",  label: "Journal Entries",  actions: ["view", "create", "delete"] },
     ],
   },
   {
@@ -118,7 +117,6 @@ export const PERMISSION_TEMPLATES: Record<string, RolePermissions> = {
     "ops.customer-receipts":          ["view", "create"],
     "ops.supplier-payments":          ["view", "create"],
     "accounting.journal-vouchers":    ["view", "create", "delete"],
-    "accounting.journal-entries":     ["view", "create", "delete"],
     "reports.sales-register":         ["view"],
     "reports.purchase-register":      ["view"],
     "reports.financial-statements":   ["view"],

@@ -37,6 +37,7 @@ export interface PurchaseAdjustmentNoteLineColumnMeta {
   defaultWidth: number;
   minWidth: number;
   align?: "left" | "right" | "center";
+  required?: boolean;
 }
 
 export const PURCHASE_ADJUSTMENT_NOTE_LINE_COLUMNS: PurchaseAdjustmentNoteLineColumnMeta[] =
@@ -56,6 +57,7 @@ export const PURCHASE_ADJUSTMENT_NOTE_LINE_COLUMNS: PurchaseAdjustmentNoteLineCo
       defaultSelected: true,
       defaultWidth: 280,
       minWidth: 200,
+      required: true,
     },
     {
       key: "hsnCode",
@@ -73,6 +75,7 @@ export const PURCHASE_ADJUSTMENT_NOTE_LINE_COLUMNS: PurchaseAdjustmentNoteLineCo
       defaultWidth: 90,
       minWidth: 80,
       align: "right",
+      required: true,
     },
     {
       key: "foc",
@@ -90,6 +93,7 @@ export const PURCHASE_ADJUSTMENT_NOTE_LINE_COLUMNS: PurchaseAdjustmentNoteLineCo
       defaultSelected: true,
       defaultWidth: 120,
       minWidth: 100,
+      required: true,
     },
     {
       key: "rate",

@@ -37,6 +37,7 @@ public static class StockSourceTypes
     public const string StockAdjustment = "StockAdjustment";
     public const string StockTransfer = "StockTransfer";
     public const string OpeningStock = "OpeningStock";
+    public const string DeliveryNote = "DeliveryNote";
 
     public static readonly string[] All =
     [
@@ -49,7 +50,8 @@ public static class StockSourceTypes
         SalesInvoice,
         StockAdjustment,
         StockTransfer,
-        OpeningStock
+        OpeningStock,
+        DeliveryNote
     ];
 }
 

@@ -1,4 +1,4 @@
-@using backend.Features.Transactions.PurchaseInvoices
+@using backend.Features.Transactions.SalesOrders
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,7 +20,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #11182
 .b-draft { background: #fef3c7; color: #92400e; }
 .b-submitted { background: #d1fae5; color: #065f46; }
 .b-cancelled { background: #fee2e2; color: #991b1b; }
-.b-preview { background: #ede9fe; color: #5b21b6; }
+.b-preview { background: #e0e7ff; color: #3730a3; }
 .info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
 .info-box { border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 12px; }
 .ib-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 5px; }
@@ -65,61 +65,55 @@ tbody tr:nth-child(even) td { background: #f9fafb; }
         <div class="co-tag">Inventory Management System</div>
     </div>
     <div>
-        <div class="doc-title">Purchase Invoice</div>
+        <div class="doc-title">@Model.VoucherType</div>
         <div class="doc-no">@Model.No</div>
     </div>
 </div>
 
 <div class="meta-grid">
     <div><div class="m-label">Date</div><div class="m-value">@Model.Date</div></div>
-    <div><div class="m-label">Due Date</div><div class="m-value">@Model.DueDate</div></div>
+    @if (!string.IsNullOrWhiteSpace(Model.DeliveryDate))
+    {
+        <div><div class="m-label">Delivery Date</div><div class="m-value">@Model.DeliveryDate</div></div>
+    }
+    else
+    {
+        <div></div>
+    }
+    <div>
+        <div class="m-label">Salesman</div>
+        <div class="m-value">@(string.IsNullOrWhiteSpace(Model.SalesMan) ? "—" : Model.SalesMan)</div>
+    </div>
     <div>
         <div class="m-label">Status</div>
         <div class="m-value"><span class="badge @Model.BadgeClass">@Model.BadgeText</span></div>
-    </div>
-    <div>
-        <div class="m-label">Tax</div>
-        <div class="m-value">@(Model.Taxable ? "Taxable" : "Non-Taxable")</div>
     </div>
 </div>
 
 <div class="info-row">
     <div class="info-box">
-        <div class="ib-label">Vendor</div>
-        <div class="ib-name">@Model.VendorName</div>
-        <div class="ib-line">@Model.VendorAddress</div>
-        @if (!string.IsNullOrWhiteSpace(Model.VendorAttention))
+        <div class="ib-label">Customer</div>
+        <div class="ib-name">@Model.CustomerName</div>
+        @if (!string.IsNullOrWhiteSpace(Model.CustomerAddress))
         {
-            <div class="ib-line">Attn: @Model.VendorAttention</div>
+            <div class="ib-line">@Model.CustomerAddress</div>
         }
-        @if (!string.IsNullOrWhiteSpace(Model.VendorPhone))
+        @if (!string.IsNullOrWhiteSpace(Model.CustomerAttention))
         {
-            <div class="ib-line">Tel: @Model.VendorPhone</div>
+            <div class="ib-line">Attn: @Model.CustomerAttention</div>
         }
     </div>
     <div class="info-box">
-        <div class="ib-label">Reference</div>
-        <div class="m-label" style="margin-top:4px">Type</div>
-        <div class="ib-name">@Model.ReferenceType</div>
-        @if (!string.IsNullOrWhiteSpace(Model.ReferenceNo))
+        <div class="ib-label">Dispatch</div>
+        @if (!string.IsNullOrWhiteSpace(Model.VehicleNo))
         {
-            <div class="m-label" style="margin-top:6px">Ref No</div>
-            <div class="ib-name">@Model.ReferenceNo</div>
+            <div class="ib-line"><strong>Vehicle No:</strong> @Model.VehicleNo</div>
         }
-        @if (!string.IsNullOrWhiteSpace(Model.SupplierInvoiceNo))
+        else
         {
-            <div class="m-label" style="margin-top:6px">Supplier Invoice</div>
-            <div class="ib-name">@Model.SupplierInvoiceNo</div>
+            <div class="ib-line" style="color:#9ca3af">No dispatch details</div>
         }
     </div>
-</div>
-
-<div class="sec-meta">
-    <div><div class="m-label">Payment Mode</div><div class="m-value">@Model.PaymentMode</div></div>
-    @if (!string.IsNullOrWhiteSpace(Model.Currency))
-    {
-        <div><div class="m-label">Currency</div><div class="m-value">@Model.Currency</div></div>
-    }
 </div>
 
 <table>
@@ -133,7 +127,7 @@ tbody tr:nth-child(even) td { background: #f9fafb; }
             <th class="r" style="width:68px">Rate</th>
             <th class="r" style="width:68px">Discount</th>
             <th class="r" style="width:68px">Tax</th>
-            <th class="r" style="width:78px">Total</th>
+            <th class="r" style="width:78px">Amount</th>
         </tr>
     </thead>
     <tbody>
@@ -188,6 +182,10 @@ tbody tr:nth-child(even) td { background: #f9fafb; }
         <div class="sum-row"><span class="sl">Sub Total</span><span class="sv">@Model.Total</span></div>
         <div class="sum-row"><span class="sl">Discount</span><span class="sv">&#8722; @Model.Discount</span></div>
         <div class="sum-row"><span class="sl">Tax</span><span class="sv">+ @Model.Tax</span></div>
+        @if (Model.HasFreight)
+        {
+            <div class="sum-row"><span class="sl">Freight</span><span class="sv">+ @Model.Freight</span></div>
+        }
         @if (Model.HasAddition)
         {
             <div class="sum-row">
@@ -195,21 +193,22 @@ tbody tr:nth-child(even) td { background: #f9fafb; }
                 <span class="sv">@Model.AdditionSign @Model.AdditionAbs</span>
             </div>
         }
+        @if (Model.HasRoundOff)
+        {
+            <div class="sum-row"><span class="sl">Round Off</span><span class="sv">@Model.RoundOff</span></div>
+        }
+        @if (Model.HasSoAdvance)
+        {
+            <div class="sum-row"><span class="sl">SO Advance</span><span class="sv">&#8722; @Model.SoAdvance</span></div>
+        }
         <div class="sum-row net-row"><span class="sl">Net Total</span><span class="sv">@Model.NetTotal</span></div>
     </div>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(Model.Notes) || !string.IsNullOrWhiteSpace(Model.FooterNotes))
+@if (!string.IsNullOrWhiteSpace(Model.Remarks))
 {
     <div class="notes-wrap">
-        @if (!string.IsNullOrWhiteSpace(Model.Notes))
-        {
-            <div style="flex:1"><div class="n-label">Notes</div><div class="n-text">@Model.Notes</div></div>
-        }
-        @if (!string.IsNullOrWhiteSpace(Model.FooterNotes))
-        {
-            <div style="flex:1"><div class="n-label">Remarks</div><div class="n-text">@Model.FooterNotes</div></div>
-        }
+        <div style="flex:1"><div class="n-label">Remarks</div><div class="n-text">@Model.Remarks</div></div>
     </div>
 }
 

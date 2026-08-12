@@ -240,7 +240,8 @@ internal static class GoodsReceiptNoteHandlers
         {
             LrService = NormalizeOptional(logisticsRequest.LrService),
             LrNo = NormalizeOptional(logisticsRequest.LrNo),
-            LrDate = logisticsRequest.LrDate
+            LrDate = logisticsRequest.LrDate,
+            EWayBillNo = NormalizeOptional(logisticsRequest.EWayBillNo)
         };
 
         var general = new GoodsReceiptNoteGeneral

@@ -71,6 +71,7 @@ builder.Services.AddSingleton<GoodsReceiptNotePdfService>();
 builder.Services.AddSingleton<PurchaseInvoicePdfService>();
 builder.Services.AddSingleton<SalesInvoicePdfService>();
 builder.Services.AddSingleton<DeliveryNotePdfService>();
+builder.Services.AddSingleton<SalesOrderPdfService>();
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<AuthBootstrapOptions>(builder.Configuration.GetSection(AuthBootstrapOptions.SectionName));

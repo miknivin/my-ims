@@ -270,6 +270,9 @@ internal static class VendorHandlers
         vendor.UpdatedAtUtc = DateTime.UtcNow;
 
         var hadPreviousOb = vendor.OpeningBalance is not null;
+        var oldObAmount = vendor.OpeningBalance?.Amount;
+        var oldObType = vendor.OpeningBalance?.BalanceType;
+        var oldObDate = vendor.OpeningBalance?.AsOfDate;
 
         if (buildResult.OpeningBalance is null)
         {
@@ -300,9 +303,20 @@ internal static class VendorHandlers
             vendor.OpeningBalance.UpdatedAtUtc = DateTime.UtcNow;
         }
 
-        var journalUpdateError = await VendorOpeningBalanceJournalPosting.PrepareUpdateAsync(dbContext, vendor, hadPreviousOb, cancellationToken);
-        if (journalUpdateError is not null)
-            return TypedResults.BadRequest(new ApiResponse<object>(false, journalUpdateError, null));
+        var obActuallyChanged = hadPreviousOb && (
+            vendor.OpeningBalance is null ||
+            vendor.OpeningBalance.Amount != oldObAmount ||
+            vendor.OpeningBalance.BalanceType != oldObType ||
+            vendor.OpeningBalance.AsOfDate != oldObDate);
+
+        var needsJournalUpdate = obActuallyChanged || (!hadPreviousOb && vendor.OpeningBalance is not null);
+
+        if (needsJournalUpdate)
+        {
+            var journalUpdateError = await VendorOpeningBalanceJournalPosting.PrepareUpdateAsync(dbContext, vendor, obActuallyChanged, cancellationToken);
+            if (journalUpdateError is not null)
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalUpdateError, null));
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -465,21 +479,23 @@ internal static class VendorHandlers
 
         if (openingBalanceRequest is not null)
         {
-            if (openingBalanceRequest.Amount < 0)
+            if (openingBalanceRequest.Amount <= 0)
             {
-                return VendorRequestBuildResult.Invalid("Opening balance amount cannot be negative.");
+                openingBalance = null;
             }
-
-            if (!BalanceTypes.All.Contains(openingBalanceRequest.BalanceType, StringComparer.OrdinalIgnoreCase))
+            else
             {
-                return VendorRequestBuildResult.Invalid("Opening balance type must be either Dr or Cr.");
+                if (!BalanceTypes.All.Contains(openingBalanceRequest.BalanceType, StringComparer.OrdinalIgnoreCase))
+                {
+                    return VendorRequestBuildResult.Invalid("Opening balance type must be either Dr or Cr.");
+                }
+
+                openingBalance = openingBalanceRequest with
+                {
+                    BalanceType = BalanceTypes.All.First(value =>
+                        value.Equals(openingBalanceRequest.BalanceType, StringComparison.OrdinalIgnoreCase))
+                };
             }
-
-            openingBalance = openingBalanceRequest with
-            {
-                BalanceType = BalanceTypes.All.First(value =>
-                    value.Equals(openingBalanceRequest.BalanceType, StringComparison.OrdinalIgnoreCase))
-            };
         }
 
         var requestedStatus = normalizedStatus;

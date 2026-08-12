@@ -70,7 +70,7 @@ export default function CommercialDetailsSection() {
           />
         </div>
 
-        <div className="md:col-span-2">
+        <div>
           <label className={labelClass}>Inter State</label>
           <select
             className={inputClass}

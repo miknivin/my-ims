@@ -12,8 +12,10 @@ import PurchaseOrderListPage from "@/features/operations/purchase-order/Purchase
 import PurchaseOrderEditPage from "@/features/operations/purchase-order/PurchaseOrderEditPage";
 import SalesInvoiceFormPage from "@/features/operations/sales-invoice/create/SalesInvoiceFormPage";
 import SalesInvoiceListPage from "@/features/operations/sales-invoice/SalesInvoiceListPage";
+import DeliveryNoteEditPage from "@/features/operations/delivery-note/DeliveryNoteEditPage";
 import SalesOrderFormPage from "@/features/operations/sales-order/create/SalesOrderFormPage";
 import SalesOrderListPage from "@/features/operations/sales-order/SalesOrderListPage";
+import SalesOrderEditPage from "@/features/operations/sales-order/SalesOrderEditPage";
 import PurchaseCreditNoteFormPage from "@/features/operations/purchase-credit-note/create/PurchaseCreditNoteFormPage";
 import PurchaseCreditNoteListPage from "@/features/operations/purchase-credit-note/PurchaseCreditNoteListPage";
 import PurchaseDebitNoteFormPage from "@/features/operations/purchase-debit-note/create/PurchaseDebitNoteFormPage";
@@ -26,7 +28,6 @@ import BillWisePaymentFormPage from "@/features/operations/bill-wise-payment/cre
 import BillWisePaymentListPage from "@/features/operations/bill-wise-payment/BillWisePaymentListPage";
 import BillWiseReceiptFormPage from "@/features/operations/bill-wise-receipt/create/BillWiseReceiptFormPage";
 import BillWiseReceiptListPage from "@/features/operations/bill-wise-receipt/BillWiseReceiptListPage";
-import JournalEntryListPage from "@/features/operations/accounting/journal-entries/JournalEntryListPage";
 import JournalVoucherListPage from "@/features/operations/accounting/journal-vouchers/JournalVoucherListPage";
 import JournalVoucherViewPage from "@/features/operations/accounting/journal-vouchers/JournalVoucherViewPage";
 import MastersPlaceholder from "@/features/masters/pages/Masters/MastersPlaceholder";
@@ -42,6 +43,7 @@ export const operationsRoutes = (
     <Route path="sales-order">
       <Route index element={<SalesOrderListPage />} />
       <Route path="new" element={<SalesOrderFormPage />} />
+      <Route path=":id/edit" element={<SalesOrderEditPage />} />
     </Route>
     <Route path="purchase-invoice">
       <Route index element={<PurchaseInvoiceListPage />} />
@@ -59,6 +61,7 @@ export const operationsRoutes = (
     <Route path="delivery-note">
       <Route index element={<DeliveryNoteListPage />} />
       <Route path="new" element={<DeliveryNoteFormPage />} />
+      <Route path=":id/edit" element={<DeliveryNoteEditPage />} />
     </Route>
     <Route
       path="stock-adjustment"
@@ -105,9 +108,6 @@ export const operationsRoutes = (
     <Route path="accounting/journal-vouchers">
       <Route index element={<JournalVoucherListPage />} />
       <Route path=":id" element={<JournalVoucherViewPage />} />
-    </Route>
-    <Route path="accounting/journal-entries">
-      <Route index element={<JournalEntryListPage />} />
     </Route>
   </Route>
 );

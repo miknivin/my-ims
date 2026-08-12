@@ -25,7 +25,8 @@ internal static class SalesOrderHandlers
             .Include(current => current.Items)
                 .ThenInclude(item => item.Warehouse)
             .Include(current => current.Additions)
-                .ThenInclude(item => item.Ledger);
+                .ThenInclude(item => item.Ledger)
+            .AsSplitQuery();
     }
 
     internal static async Task<IResult> GetAllAsync(
@@ -117,7 +118,7 @@ internal static class SalesOrderHandlers
             Items = buildResult.Items,
             Additions = buildResult.Additions,
             Footer = buildResult.Footer,
-            Status = SalesOrderStatuses.Draft,
+            Status = NormalizeStatus(request.Status),
             CreatedById = userId,
             CreatedAtUtc = now,
             UpdatedAtUtc = now
@@ -168,6 +169,89 @@ internal static class SalesOrderHandlers
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
         return TypedResults.Ok(new ApiResponse<SalesOrderDto>(true, "Sales order updated successfully.", SalesOrderDto.FromEntity(updated)));
+    }
+
+    internal static async Task<IResult> UpdateAsync(
+        Guid id,
+        CreateSalesOrderRequest request,
+        ClaimsPrincipal principal,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(principal, out var userId))
+            return TypedResults.Unauthorized();
+
+        var salesOrder = await BuildQuery(dbContext)
+            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+
+        if (salesOrder is null)
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Sales order not found.", null));
+
+        if (salesOrder.Status == SalesOrderStatuses.Cancelled)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, "Cannot edit a cancelled sales order.", null));
+
+        var buildResult = BuildSalesOrderRequest(
+            request.OrderDetails, request.PartyInformation, request.CommercialDetails,
+            request.SalesDetails, request.Items, request.Additions, request.Footer);
+
+        if (buildResult.Error is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
+
+        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, userId, cancellationToken);
+        if (resolutionError is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+
+        buildResult.OrderDetails.No = salesOrder.OrderDetails.No;
+
+        salesOrder.OrderDetails.VoucherType = buildResult.OrderDetails.VoucherType;
+        salesOrder.OrderDetails.Date = buildResult.OrderDetails.Date;
+        salesOrder.OrderDetails.DeliveryDate = buildResult.OrderDetails.DeliveryDate;
+
+        salesOrder.PartyInformation.CustomerId = buildResult.PartyInformation.CustomerId;
+        salesOrder.PartyInformation.CustomerNameSnapshot = buildResult.PartyInformation.CustomerNameSnapshot;
+        salesOrder.PartyInformation.CustomerCodeSnapshot = buildResult.PartyInformation.CustomerCodeSnapshot;
+        salesOrder.PartyInformation.Address = buildResult.PartyInformation.Address;
+        salesOrder.PartyInformation.Attention = buildResult.PartyInformation.Attention;
+
+        salesOrder.CommercialDetails.RateLevel = buildResult.CommercialDetails.RateLevel;
+        salesOrder.CommercialDetails.CurrencyId = buildResult.CommercialDetails.CurrencyId;
+        salesOrder.CommercialDetails.CurrencyCodeSnapshot = buildResult.CommercialDetails.CurrencyCodeSnapshot;
+        salesOrder.CommercialDetails.CurrencySymbolSnapshot = buildResult.CommercialDetails.CurrencySymbolSnapshot;
+        salesOrder.CommercialDetails.CreditLimit = buildResult.CommercialDetails.CreditLimit;
+        salesOrder.CommercialDetails.IsInterState = buildResult.CommercialDetails.IsInterState;
+        salesOrder.CommercialDetails.TaxApplication = buildResult.CommercialDetails.TaxApplication;
+
+        salesOrder.SalesDetails.SalesManId = buildResult.SalesDetails.SalesManId;
+        salesOrder.SalesDetails.SalesManNameSnapshot = buildResult.SalesDetails.SalesManNameSnapshot;
+
+        dbContext.RemoveRange(salesOrder.Items);
+        dbContext.RemoveRange(salesOrder.Additions);
+        salesOrder.Items = buildResult.Items;
+        salesOrder.Additions = buildResult.Additions;
+        salesOrder.Footer = buildResult.Footer;
+        salesOrder.UpdatedById = userId;
+        salesOrder.UpdatedAtUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        return TypedResults.Ok(new ApiResponse<SalesOrderDto>(true, "Sales order updated successfully.", SalesOrderDto.FromEntity(updated)));
+    }
+
+    internal static async Task<IResult> DownloadPdfAsync(
+        Guid id,
+        SalesOrderPdfService pdfService,
+        AppDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        var salesOrder = await BuildQuery(dbContext)
+            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+
+        if (salesOrder is null)
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Sales order not found.", null));
+
+        var pdfBytes = await pdfService.GeneratePdfAsync(salesOrder);
+        return Results.File(pdfBytes, "application/pdf");
     }
 
     private static SalesOrderBuildResult BuildSalesOrderRequest(

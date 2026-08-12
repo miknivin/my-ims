@@ -18,6 +18,7 @@ export interface TransactionLineColumnDefinition<
   defaultWidth: number;
   minWidth: number;
   align?: "left" | "right" | "center";
+  required?: boolean;
   sortable?: boolean;
   getSortValue: (line: TLine) => string | number;
   renderCell: (context: TContext) => ReactNode;

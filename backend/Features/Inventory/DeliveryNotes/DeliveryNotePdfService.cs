@@ -50,6 +50,8 @@ public sealed class DeliveryNotePdfService : IDisposable
             TransportMode = dn.Logistics.TransportMode,
             LrNo = dn.Logistics.LrNo,
             VehicleNo = dn.Logistics.VehicleNo,
+            EWayBillNo = dn.Logistics.EWayBillNo,
+            TransporterName = dn.Logistics.TransporterName,
             Notes = dn.General.Notes,
             TotalQty = Fmt(dn.Footer.TotalQty),
             TotalAmount = Fmt(dn.Footer.TotalAmount),

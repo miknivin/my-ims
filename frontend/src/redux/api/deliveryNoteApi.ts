@@ -32,6 +32,8 @@ export interface DeliveryNoteLogistics {
   lrNo: string | null;
   lrDate: string | null;
   vehicleNo: string | null;
+  eWayBillNo: string | null;
+  transporterName: string | null;
 }
 
 export interface DeliveryNoteGeneral {
@@ -117,6 +119,8 @@ export interface DeliveryNotePayload {
     lrNo: string | null;
     lrDate: string | null;
     vehicleNo: string | null;
+    eWayBillNo: string | null;
+    transporterName: string | null;
   };
   general: {
     notes: string | null;
@@ -167,6 +171,15 @@ export const deliveryNoteApi = createApi({
         response.data,
       invalidatesTags: ["DeliveryNote"],
     }),
+    updateDeliveryNote: builder.mutation<DeliveryNote, DeliveryNotePayload & { id: string }>({
+      query: ({ id, ...body }) => ({
+        url: `/${id}`,
+        method: "PUT",
+        body,
+      }),
+      transformResponse: (response: ApiResponse<DeliveryNote>) => response.data,
+      invalidatesTags: ["DeliveryNote"],
+    }),
     updateDeliveryNoteStatus: builder.mutation<
       DeliveryNote,
       { id: string; status: string }
@@ -212,6 +225,7 @@ export const {
   useGetDeliveryNoteByIdQuery,
   useLazyGetDeliveryNoteByIdQuery,
   useCreateDeliveryNoteMutation,
+  useUpdateDeliveryNoteMutation,
   useUpdateDeliveryNoteStatusMutation,
   usePreviewDeliveryNotePdfMutation,
   useDownloadDeliveryNotePdfMutation,

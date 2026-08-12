@@ -12,14 +12,25 @@ export default function LogisticsSection() {
     <TransactionSectionCard title="Logistics">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className={labelClass}>LR Service</label>
+          <label className={labelClass}>E-Way Bill No</label>
+          <input
+            className={inputClass}
+            value={state.logistics.eWayBillNo}
+            onChange={(event) => setLogistics({ eWayBillNo: event.target.value })}
+            placeholder="GST e-way bill number"
+            maxLength={20}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Transporter (LR Service)</label>
           <input
             className={inputClass}
             value={state.logistics.lrService}
             onChange={(event) =>
               setLogistics({ lrService: event.target.value })
             }
-            placeholder="Transport service"
+            placeholder="Transport service / courier name"
           />
         </div>
 

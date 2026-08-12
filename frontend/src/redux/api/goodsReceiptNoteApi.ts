@@ -32,6 +32,7 @@ export interface GoodsReceiptLogistics {
   lrService: string | null;
   lrNo: string | null;
   lrDate: string | null;
+  eWayBillNo: string | null;
 }
 
 export interface GoodsReceiptGeneral {
@@ -130,6 +131,7 @@ export interface GoodsReceiptNotePayload {
     lrService: string | null;
     lrNo: string | null;
     lrDate: string | null;
+    eWayBillNo: string | null;
   };
   general: {
     ownProductsOnly: boolean;

@@ -23,7 +23,7 @@ export default function SummaryFooterSection() {
   const freight = Number.parseFloat(state.footer.freight) || 0;
   const soAdvance = Number.parseFloat(state.footer.soAdvance) || 0;
   const roundOff = Number.parseFloat(state.footer.roundOff) || 0;
-  const adjustmentsTotal = additionsNet + freight + roundOff - soAdvance;
+  const adjustmentsTotal = additionsNet + freight + roundOff;
 
   const tabs: TransactionSummaryTab[] = [
     {

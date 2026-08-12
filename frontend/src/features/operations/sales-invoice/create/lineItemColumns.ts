@@ -33,6 +33,7 @@ export interface SalesInvoiceLineColumnMeta {
   defaultWidth: number;
   minWidth: number;
   align?: "left" | "right" | "center";
+  required?: boolean;
 }
 
 export const SALES_INVOICE_LINE_COLUMNS: SalesInvoiceLineColumnMeta[] = [
@@ -51,6 +52,7 @@ export const SALES_INVOICE_LINE_COLUMNS: SalesInvoiceLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 280,
     minWidth: 180,
+    required: true,
   },
   {
     key: "hsnCode",
@@ -67,6 +69,7 @@ export const SALES_INVOICE_LINE_COLUMNS: SalesInvoiceLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 120,
     minWidth: 100,
+    required: true,
   },
   {
     key: "quantity",
@@ -76,6 +79,7 @@ export const SALES_INVOICE_LINE_COLUMNS: SalesInvoiceLineColumnMeta[] = [
     defaultWidth: 90,
     minWidth: 80,
     align: "right",
+    required: true,
   },
   {
     key: "rate",
@@ -171,9 +175,10 @@ export const SALES_INVOICE_LINE_COLUMNS: SalesInvoiceLineColumnMeta[] = [
     key: "warehouseId",
     label: "Warehouse",
     nature: "lookup",
-    defaultSelected: false,
+    defaultSelected: true,
     defaultWidth: 180,
     minWidth: 150,
+    required: true,
   },
   {
     key: "lineTotal",

@@ -41,11 +41,13 @@ const SalesOrderFormContext = createContext<
 
 export function SalesOrderFormProvider({
   children,
+  initialState,
 }: {
   children: React.ReactNode;
+  initialState?: SalesOrderFormState;
 }) {
-  const [state, setState] = useState<SalesOrderFormState>(() =>
-    createSalesOrderFormState(),
+  const [state, setState] = useState<SalesOrderFormState>(
+    () => initialState ?? createSalesOrderFormState(),
   );
 
   const value = useMemo<SalesOrderFormContextValue>(

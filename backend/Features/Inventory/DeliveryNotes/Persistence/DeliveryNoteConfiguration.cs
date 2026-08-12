@@ -48,6 +48,8 @@ public sealed class DeliveryNoteConfiguration : IEntityTypeConfiguration<Deliver
             log.Property(x => x.LrNo).HasColumnName("lr_no").HasMaxLength(120);
             log.Property(x => x.LrDate).HasColumnName("lr_date");
             log.Property(x => x.VehicleNo).HasColumnName("vehicle_no").HasMaxLength(50);
+            log.Property(x => x.EWayBillNo).HasColumnName("e_way_bill_no").HasMaxLength(20);
+            log.Property(x => x.TransporterName).HasColumnName("transporter_name").HasMaxLength(150);
         });
 
         builder.OwnsOne(dn => dn.General, gen =>

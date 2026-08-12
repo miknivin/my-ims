@@ -8,10 +8,10 @@
 body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111827; background: #fff; }
 .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%) rotate(-45deg); font-size: 110px; font-weight: 900; color: rgba(0,0,0,0.04); white-space: nowrap; z-index: 9999; pointer-events: none; letter-spacing: 0.3em; user-select: none; }
 .page { padding: 0; }
-.header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 2px solid #059669; margin-bottom: 14px; }
-.co-name { font-size: 20px; font-weight: 800; color: #059669; }
+.header { display: flex; align-items: flex-start; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #d1d5db; margin-bottom: 14px; }
+.co-name { font-size: 20px; font-weight: 800; color: #111827; }
 .co-tag { font-size: 9.5px; color: #6b7280; margin-top: 2px; }
-.doc-title { font-size: 13px; font-weight: 700; color: #059669; letter-spacing: 2px; text-transform: uppercase; text-align: right; }
+.doc-title { font-size: 13px; font-weight: 700; color: #374151; letter-spacing: 2px; text-transform: uppercase; text-align: right; }
 .doc-no { font-size: 12px; font-weight: 700; color: #111827; text-align: right; margin-top: 4px; }
 .meta-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
 .m-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 3px; }
@@ -28,7 +28,7 @@ body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #11182
 .ib-line { font-size: 10.5px; color: #4b5563; line-height: 1.55; }
 .sec-meta { display: flex; gap: 24px; margin-bottom: 14px; padding: 8px 12px; background: #f9fafb; border-radius: 6px; border: 1px solid #e5e7eb; }
 table { width: 100%; border-collapse: collapse; font-size: 10.5px; margin-bottom: 12px; }
-thead th { background: #059669; color: #fff; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 7px 8px; text-align: left; }
+thead th { background: #f3f4f6; color: #111827; border-bottom: 1px solid #d1d5db; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 7px 8px; text-align: left; }
 thead th.r { text-align: right; }
 thead th.c { text-align: center; }
 tbody td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; color: #374151; }
@@ -43,9 +43,9 @@ tbody tr:nth-child(even) td { background: #f9fafb; }
 .sum-row:last-child { border-bottom: none; }
 .sl { color: #6b7280; }
 .sv { font-weight: 600; color: #111827; }
-.net-row { background: #f0fdf4; border-top: 2px solid #059669 !important; }
-.net-row .sl { color: #059669; font-weight: 700; font-size: 12px; }
-.net-row .sv { color: #059669; font-weight: 800; font-size: 12px; }
+.net-row { background: #f3f4f6; border-top: 2px solid #374151 !important; }
+.net-row .sl { color: #374151; font-weight: 700; font-size: 12px; }
+.net-row .sv { color: #111827; font-weight: 800; font-size: 12px; }
 .notes-wrap { border-top: 1px solid #e5e7eb; padding-top: 12px; margin-top: 2px; display: flex; gap: 20px; }
 .n-label { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 4px; }
 .n-text { font-size: 10.5px; color: #374151; line-height: 1.6; }

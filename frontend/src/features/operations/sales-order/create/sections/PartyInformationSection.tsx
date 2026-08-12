@@ -21,16 +21,45 @@ function formatCustomerAddress(customer: {
     pincode: string | null;
     country: string | null;
   };
+  shippingAddresses: Array<{
+    street: string | null;
+    city: string | null;
+    state: string | null;
+    pincode: string | null;
+    country: string | null;
+    isDefault: boolean;
+  }>;
 }) {
-  const parts = [
+  const hasMeaningfulBilling = [
     customer.billingAddress.street,
     customer.billingAddress.city,
     customer.billingAddress.state,
     customer.billingAddress.pincode,
-    customer.billingAddress.country,
-  ].filter(Boolean);
+  ].some(Boolean);
 
-  return parts.join(", ");
+  if (hasMeaningfulBilling) {
+    return [
+      customer.billingAddress.street,
+      customer.billingAddress.city,
+      customer.billingAddress.state,
+      customer.billingAddress.pincode,
+      customer.billingAddress.country,
+    ].filter(Boolean).join(", ");
+  }
+
+  const defaultShipping = customer.shippingAddresses.find((a) => a.isDefault);
+  if (defaultShipping) {
+    const parts = [
+      defaultShipping.street,
+      defaultShipping.city,
+      defaultShipping.state,
+      defaultShipping.pincode,
+      defaultShipping.country,
+    ].filter(Boolean);
+    if (parts.length > 0) return parts.join(", ");
+  }
+
+  return customer.billingAddress.country ?? "";
 }
 
 export default function PartyInformationSection() {

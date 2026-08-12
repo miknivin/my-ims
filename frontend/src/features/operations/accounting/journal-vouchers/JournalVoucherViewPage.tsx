@@ -2,6 +2,7 @@ import { useNavigate, useParams } from "react-router";
 import { useGetJournalVoucherByIdQuery } from "@/redux/api/journalVoucherApi";
 import PageBreadcrumb from "@/shared/components/common/PageBreadCrumb";
 import Button from "@/shared/components/ui/button/Button";
+import JournalVoucherFlowDiagram from "./components/JournalVoucherFlowDiagram";
 
 export default function JournalVoucherViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +52,13 @@ export default function JournalVoucherViewPage() {
                 {data.narration || "-"}
               </p>
             </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              Journal Flow
+            </p>
+            <JournalVoucherFlowDiagram voucher={data} />
           </section>
 
           <section className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">

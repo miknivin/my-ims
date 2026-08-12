@@ -1,4 +1,4 @@
-import type { SalesOrderPayload } from "@/redux/api/salesOrderApi";
+import type { SalesOrder, SalesOrderPayload } from "@/redux/api/salesOrderApi";
 
 let salesOrderLineCounter = 0;
 let salesOrderAdditionCounter = 0;
@@ -305,8 +305,73 @@ export function recalculateSalesOrderState(
   };
 }
 
+export function fromSalesOrderDto(dto: SalesOrder): SalesOrderFormState {
+  return createSalesOrderFormState({
+    orderDetails: {
+      voucherType: dto.orderDetails.voucherType as "SL" | "PH",
+      no: dto.orderDetails.no,
+      date: dto.orderDetails.date,
+      deliveryDate: dto.orderDetails.deliveryDate ?? "",
+    },
+    partyInformation: {
+      customerId: dto.partyInformation.customerId,
+      customerName: dto.partyInformation.customerNameSnapshot,
+      customerCode: dto.partyInformation.customerCodeSnapshot ?? "",
+      address: dto.partyInformation.address ?? "",
+      attention: dto.partyInformation.attention ?? "",
+    },
+    commercialDetails: {
+      rateLevel: dto.commercialDetails.rateLevel as "WRATE" | "RRATE" | "MRATE",
+      currencyId: dto.commercialDetails.currencyId,
+      currencyCode: dto.commercialDetails.currencyCodeSnapshot ?? "",
+      currencySymbol: dto.commercialDetails.currencySymbolSnapshot ?? "",
+      creditLimit: `${dto.commercialDetails.creditLimit ?? 0}`,
+      isInterState: dto.commercialDetails.isInterState,
+      taxApplication: dto.commercialDetails.taxApplication as "After Discount" | "Before Discount",
+    },
+    salesDetails: {
+      salesManId: dto.salesDetails.salesManId,
+      salesMan: dto.salesDetails.salesManNameSnapshot ?? "",
+    },
+    items: dto.items.map((item) =>
+      createEmptySalesOrderLine(item.sno, {
+        productId: item.productId,
+        productName: item.productNameSnapshot,
+        hsnCode: item.hsnCode ?? "",
+        unitId: item.unitId,
+        unitName: item.unitName,
+        quantity: `${item.quantity}`,
+        foc: `${item.foc}`,
+        mrp: `${item.mrp}`,
+        rate: `${item.rate}`,
+        discountPercent: `${item.discountPercent}`,
+        taxPercent: `${item.taxPercent}`,
+        warehouseId: item.warehouseId,
+        warehouseName: item.warehouseName ?? "",
+      }),
+    ),
+    additions: dto.additions.map((a) =>
+      createEmptySalesOrderAddition({
+        type: a.type as "Addition" | "Deduction",
+        ledgerId: a.ledgerId,
+        ledgerName: a.ledgerNameSnapshot,
+        description: a.description ?? "",
+        amount: `${a.amount}`,
+      }),
+    ),
+    footer: {
+      vehicleNo: dto.footer.vehicleNo ?? "",
+      freight: `${dto.footer.freight}`,
+      soAdvance: `${dto.footer.soAdvance}`,
+      roundOff: `${dto.footer.roundOff}`,
+      remarks: dto.footer.remarks ?? "",
+    },
+  });
+}
+
 export function toSalesOrderPayload(
   state: SalesOrderFormState,
+  status?: string,
 ): SalesOrderPayload {
   return {
     orderDetails: {
@@ -381,5 +446,6 @@ export function toSalesOrderPayload(
       balance: state.footer.balance,
       remarks: state.footer.remarks || null,
     },
+    status: status ?? null,
   };
 }

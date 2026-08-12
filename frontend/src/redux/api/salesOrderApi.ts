@@ -111,6 +111,7 @@ export interface SalesOrderPayload {
     date: string;
     deliveryDate: string | null;
   };
+  status?: string | null;
   partyInformation: {
     customerId: string;
     customerName: string;
@@ -175,6 +176,11 @@ export interface SalesOrderListQueryParams {
   limit?: number;
 }
 
+export interface UpdateSalesOrderStatusPayload {
+  id: string;
+  status: string;
+}
+
 export const salesOrderApi = createApi({
   reducerPath: "salesOrderApi",
   baseQuery: fetchBaseQuery({
@@ -221,6 +227,26 @@ export const salesOrderApi = createApi({
       }),
       invalidatesTags: ["SalesOrder"],
     }),
+    updateSalesOrderStatus: builder.mutation<SalesOrder, UpdateSalesOrderStatusPayload>({
+      query: ({ id, status }) => ({
+        url: `/${id}`,
+        method: "PATCH",
+        body: { status },
+      }),
+      transformResponse: (response: ApiResponse<SalesOrder>) => response.data,
+      invalidatesTags: ["SalesOrder"],
+    }),
+    downloadSalesOrderPdf: builder.mutation<string, string>({
+      query: (id) => ({
+        url: `/${id}/pdf`,
+        method: "GET",
+        responseHandler: async (response) => {
+          const blob = await response.blob();
+          return URL.createObjectURL(blob);
+        },
+        cache: "no-cache",
+      }),
+    }),
   }),
 });
 
@@ -232,4 +258,6 @@ export const {
   useCreateSalesOrderMutation,
   useUpdateSalesOrderMutation,
   useDeleteSalesOrderMutation,
+  useUpdateSalesOrderStatusMutation,
+  useDownloadSalesOrderPdfMutation,
 } = salesOrderApi;

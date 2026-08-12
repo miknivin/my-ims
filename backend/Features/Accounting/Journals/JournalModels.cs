@@ -14,7 +14,8 @@ public enum JournalVoucherType : short
     PurchaseDebitNote = 15,
     BillWiseReceipt = 16,
     BillWisePayment = 17,
-    GoodsReceiptNote = 18
+    GoodsReceiptNote = 18,
+    DeliveryNote = 19
 }
 
 public enum JournalVoucherStatus : short
@@ -36,7 +37,8 @@ public enum JournalSourceType : short
     PurchaseDebitNote = 15,
     BillWiseReceipt = 16,
     BillWisePayment = 17,
-    GoodsReceiptNote = 18
+    GoodsReceiptNote = 18,
+    DeliveryNote = 19
 }
 
 public enum SubLedgerType : short

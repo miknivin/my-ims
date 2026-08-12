@@ -32,6 +32,7 @@ export interface SalesOrderLineColumnMeta {
   defaultWidth: number;
   minWidth: number;
   align?: "left" | "right" | "center";
+  required?: boolean;
 }
 
 export const SALES_ORDER_LINE_COLUMNS: SalesOrderLineColumnMeta[] = [
@@ -50,6 +51,7 @@ export const SALES_ORDER_LINE_COLUMNS: SalesOrderLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 280,
     minWidth: 180,
+    required: true,
   },
   {
     key: "hsnCode",
@@ -66,6 +68,7 @@ export const SALES_ORDER_LINE_COLUMNS: SalesOrderLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 120,
     minWidth: 100,
+    required: true,
   },
   {
     key: "quantity",
@@ -75,6 +78,7 @@ export const SALES_ORDER_LINE_COLUMNS: SalesOrderLineColumnMeta[] = [
     defaultWidth: 90,
     minWidth: 80,
     align: "right",
+    required: true,
   },
   {
     key: "foc",

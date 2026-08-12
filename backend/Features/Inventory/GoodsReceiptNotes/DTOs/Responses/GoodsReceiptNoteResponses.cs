@@ -3,7 +3,7 @@ namespace backend.Features.Inventory.GoodsReceiptNotes;
 public sealed record GoodsReceiptNoteSourceReferenceDto(string Mode, Guid? PurchaseOrderId, string? PurchaseOrderNo, string? DirectLpoNo, string? DirectVendorInvoiceNo);
 public sealed record GoodsReceiptNoteDocumentDto(string VoucherType, string No, DateOnly Date, DateOnly? DeliveryDate);
 public sealed record GoodsReceiptNoteVendorInformationDto(Guid VendorId, string VendorNameSnapshot, string Address, string? Attention, string? Phone);
-public sealed record GoodsReceiptNoteLogisticsDto(string? LrService, string? LrNo, DateOnly? LrDate);
+public sealed record GoodsReceiptNoteLogisticsDto(string? LrService, string? LrNo, DateOnly? LrDate, string? EWayBillNo);
 public sealed record GoodsReceiptNoteGeneralDto(bool OwnProductsOnly, string TaxableMode, string? Notes);
 public sealed record GoodsReceiptNoteLineItemDto(Guid Id, Guid GoodsReceiptNoteId, int SerialNo, Guid ProductId, string ProductNameSnapshot, string? HsnCode, string? Code, string? Ubc, Guid UnitId, string UnitName, Guid? WarehouseId, string? WarehouseName, decimal FRate, decimal Rate, decimal Quantity, decimal FocQuantity, decimal GrossAmount, decimal DiscountPercent, decimal DiscountAmount, decimal TaxableAmount, decimal Total, DateOnly? ManufacturingDateUtc, DateOnly? ExpiryDateUtc, string? Remark, decimal SellingRate, Guid? PurchaseOrderLineId);
 public sealed record GoodsReceiptNoteFooterDto(decimal Addition, decimal DiscountFooter, decimal RoundOff, decimal NetTotal, decimal TotalQty, decimal TotalFoc, decimal TotalAmount);
@@ -34,7 +34,8 @@ public sealed record GoodsReceiptNoteDto(Guid Id, GoodsReceiptNoteSourceReferenc
             new GoodsReceiptNoteLogisticsDto(
                 goodsReceiptNote.Logistics.LrService,
                 goodsReceiptNote.Logistics.LrNo,
-                goodsReceiptNote.Logistics.LrDate),
+                goodsReceiptNote.Logistics.LrDate,
+                goodsReceiptNote.Logistics.EWayBillNo),
             new GoodsReceiptNoteGeneralDto(
                 goodsReceiptNote.General.OwnProductsOnly,
                 goodsReceiptNote.General.TaxableMode,

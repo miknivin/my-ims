@@ -50,6 +50,7 @@ public sealed class GoodsReceiptNoteConfiguration : IEntityTypeConfiguration<Goo
             logistics.Property(item => item.LrService).HasColumnName("lr_service").HasMaxLength(120);
             logistics.Property(item => item.LrNo).HasColumnName("lr_no").HasMaxLength(120);
             logistics.Property(item => item.LrDate).HasColumnName("lr_date");
+            logistics.Property(item => item.EWayBillNo).HasColumnName("e_way_bill_no").HasMaxLength(20);
         });
 
         builder.OwnsOne(goodsReceiptNote => goodsReceiptNote.General, general =>

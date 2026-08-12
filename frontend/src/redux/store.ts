@@ -9,7 +9,6 @@ import { currencyApi } from "./api/currencyApi";
 import { discountApi } from "./api/discountApi";
 import { deliveryNoteApi } from "./api/deliveryNoteApi";
 import { goodsReceiptNoteApi } from "./api/goodsReceiptNoteApi";
-import { journalEntryApi } from "./api/journalEntryApi";
 import { journalVoucherApi } from "./api/journalVoucherApi";
 import { ledgerApi } from "./api/ledgerApi";
 import { ledgerGroupApi } from "./api/ledgerGroupApi";
@@ -50,7 +49,6 @@ export const store = configureStore({
     [discountApi.reducerPath]: discountApi.reducer,
     [deliveryNoteApi.reducerPath]: deliveryNoteApi.reducer,
     [goodsReceiptNoteApi.reducerPath]: goodsReceiptNoteApi.reducer,
-    [journalEntryApi.reducerPath]: journalEntryApi.reducer,
     [journalVoucherApi.reducerPath]: journalVoucherApi.reducer,
     [ledgerApi.reducerPath]: ledgerApi.reducer,
     [ledgerGroupApi.reducerPath]: ledgerGroupApi.reducer,
@@ -91,7 +89,6 @@ export const store = configureStore({
       discountApi.middleware,
       deliveryNoteApi.middleware,
       goodsReceiptNoteApi.middleware,
-      journalEntryApi.middleware,
       journalVoucherApi.middleware,
       ledgerApi.middleware,
       ledgerGroupApi.middleware,

@@ -1,4 +1,4 @@
-import type { DeliveryNoteMode, DeliveryNotePayload } from "@/redux/api/deliveryNoteApi";
+import type { DeliveryNote, DeliveryNoteMode, DeliveryNotePayload } from "@/redux/api/deliveryNoteApi";
 import type { SalesOrder } from "@/redux/api/salesOrderApi";
 
 export const DELIVERY_NOTE_DRAFT_STORAGE_KEY = "ims.delivery-note.draft";
@@ -47,6 +47,8 @@ export interface DeliveryNoteLogisticsState {
   lrNo: string;
   lrDate: string;
   vehicleNo: string;
+  eWayBillNo: string;
+  transporterName: string;
 }
 
 export interface DeliveryNoteGeneralState {
@@ -148,6 +150,8 @@ export function createDeliveryNoteFormState(
       lrNo: "",
       lrDate: today,
       vehicleNo: "",
+      eWayBillNo: "",
+      transporterName: "",
     },
     general: {
       notes: "",
@@ -278,6 +282,58 @@ export function hydrateFromSalesOrder(
   });
 }
 
+export function fromDeliveryNoteDto(dto: DeliveryNote): DeliveryNoteFormState {
+  return createDeliveryNoteFormState({
+    sourceRef: {
+      mode: dto.sourceRef.mode,
+      salesOrderId: dto.sourceRef.salesOrderId,
+      salesOrderNo: dto.sourceRef.salesOrderNo ?? "",
+      directRefNo: dto.sourceRef.directRefNo ?? "",
+    },
+    document: {
+      voucherType: dto.document.voucherType,
+      no: dto.document.no,
+      date: dto.document.date,
+      expectedDeliveryDate: dto.document.expectedDeliveryDate ?? "",
+    },
+    customerInformation: {
+      customerId: dto.customerInformation.customerId,
+      customerLabel: dto.customerInformation.customerNameSnapshot,
+      address: dto.customerInformation.address,
+      shippingAddress: dto.customerInformation.shippingAddress ?? "",
+      attention: dto.customerInformation.attention ?? "",
+      phone: dto.customerInformation.phone ?? "",
+    },
+    logistics: {
+      transportMode: dto.logistics.transportMode ?? "",
+      lrNo: dto.logistics.lrNo ?? "",
+      lrDate: dto.logistics.lrDate ?? "",
+      vehicleNo: dto.logistics.vehicleNo ?? "",
+      eWayBillNo: dto.logistics.eWayBillNo ?? "",
+      transporterName: dto.logistics.transporterName ?? "",
+    },
+    general: { notes: dto.general.notes ?? "" },
+    items: dto.items.map((item) =>
+      createEmptyDeliveryNoteLine(item.serialNo, {
+        productId: item.productId,
+        productNameSnapshot: item.productNameSnapshot,
+        hsnCode: item.hsnCode ?? "",
+        unitId: item.unitId,
+        unitName: item.unitName,
+        warehouseId: item.warehouseId,
+        warehouseName: item.warehouseName ?? "",
+        rate: `${item.rate}`,
+        quantity: `${item.quantity}`,
+        discountPercent: item.grossAmount > 0
+          ? `${Math.round((item.discountAmount / item.grossAmount) * 10000) / 100}`
+          : "0",
+        remark: item.remark ?? "",
+        salesOrderLineId: item.salesOrderLineId,
+      }),
+    ),
+  });
+}
+
 export function toDeliveryNotePayload(
   state: DeliveryNoteFormState,
 ): DeliveryNotePayload {
@@ -307,6 +363,8 @@ export function toDeliveryNotePayload(
       lrNo: state.logistics.lrNo || null,
       lrDate: state.logistics.lrDate || null,
       vehicleNo: state.logistics.vehicleNo || null,
+      eWayBillNo: state.logistics.eWayBillNo || null,
+      transporterName: state.logistics.transporterName || null,
     },
     general: {
       notes: state.general.notes || null,

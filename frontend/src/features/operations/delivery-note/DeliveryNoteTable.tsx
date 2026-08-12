@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
+import { CheckCircle, Download, Loader2, Pencil, XCircle } from "lucide-react";
 import {
   DeliveryNoteListItem,
-  useUpdateDeliveryNoteStatusMutation,
   useDownloadDeliveryNotePdfMutation,
+  useUpdateDeliveryNoteStatusMutation,
 } from "@/redux/api/deliveryNoteApi";
+import ConfirmAlert from "@/shared/components/ui/alert/ConfirmAlert";
 import {
   Table,
   TableBody,
@@ -11,7 +14,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
-import ConfirmAlert from "@/shared/components/ui/alert/ConfirmAlert";
 
 interface DeliveryNoteTableProps {
   deliveryNotes: DeliveryNoteListItem[];
@@ -21,9 +23,7 @@ interface DeliveryNoteTableProps {
 
 function formatDate(value: string, includeTime = false) {
   const parsed = new Date(value);
-
   if (Number.isNaN(parsed.getTime())) return "-";
-
   return parsed.toLocaleString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -45,45 +45,42 @@ export default function DeliveryNoteTable({
   isLoading,
   isError,
 }: DeliveryNoteTableProps) {
-  const [updateStatus] = useUpdateDeliveryNoteStatusMutation();
+  const navigate = useNavigate();
   const [downloadPdf] = useDownloadDeliveryNotePdfMutation();
-  const [confirmAction, setConfirmAction] = useState<{
+  const [updateStatus] = useUpdateDeliveryNoteStatusMutation();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{
     id: string;
     no: string;
-    status: "Submitted" | "Cancelled";
+    type: "submit" | "cancel";
   } | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const handleDownload = async (dn: DeliveryNoteListItem) => {
     setDownloadingId(dn.id);
     try {
       const url = await downloadPdf(dn.id).unwrap();
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `DN-${dn.no}.pdf`;
-      anchor.click();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `DN-${dn.no}.pdf`;
+      a.click();
       URL.revokeObjectURL(url);
-    } catch {
-      setActionError("Failed to download PDF.");
     } finally {
       setDownloadingId(null);
     }
   };
 
-  const handleConfirmedAction = async () => {
-    if (!confirmAction) return;
+  const handleConfirm = async () => {
+    if (!confirm) return;
+    setActionId(confirm.id);
     try {
       await updateStatus({
-        id: confirmAction.id,
-        status: confirmAction.status,
+        id: confirm.id,
+        status: confirm.type === "submit" ? "Submitted" : "Cancelled",
       }).unwrap();
-    } catch {
-      setActionError(
-        `Failed to ${confirmAction.status === "Submitted" ? "submit" : "cancel"} delivery note.`,
-      );
     } finally {
-      setConfirmAction(null);
+      setActionId(null);
+      setConfirm(null);
     }
   };
 
@@ -105,38 +102,19 @@ export default function DeliveryNoteTable({
 
   return (
     <>
-      {confirmAction ? (
-        <ConfirmAlert
-          open
-          title={
-            confirmAction.status === "Submitted"
-              ? "Submit delivery note?"
-              : "Cancel delivery note?"
-          }
-          message={
-            confirmAction.status === "Submitted"
-              ? `Submit ${confirmAction.no}? This cannot be reversed to Draft.`
-              : `Cancel ${confirmAction.no}? This action cannot be undone.`
-          }
-          confirmLabel={confirmAction.status === "Submitted" ? "Submit" : "Cancel DN"}
-          isConfirming={false}
-          onConfirm={() => void handleConfirmedAction()}
-          onCancel={() => setConfirmAction(null)}
-        />
-      ) : null}
-
-      {actionError ? (
-        <div className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-          {actionError}
-          <button
-            type="button"
-            className="ml-2 underline"
-            onClick={() => setActionError(null)}
-          >
-            Dismiss
-          </button>
-        </div>
-      ) : null}
+      <ConfirmAlert
+        open={!!confirm}
+        title={confirm?.type === "submit" ? `Submit DN ${confirm?.no}?` : `Cancel DN ${confirm?.no}?`}
+        message={
+          confirm?.type === "submit"
+            ? "This will mark the delivery note as Submitted."
+            : "This will cancel the delivery note. This cannot be undone."
+        }
+        confirmLabel={confirm?.type === "submit" ? "Submit" : "Cancel DN"}
+        isConfirming={!!actionId}
+        onConfirm={handleConfirm}
+        onCancel={() => setConfirm(null)}
+      />
 
       <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
         <div className="max-w-full overflow-x-auto">
@@ -150,6 +128,7 @@ export default function DeliveryNoteTable({
                   <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">Net Total</TableCell>
                   <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">Status</TableCell>
                   <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">Created</TableCell>
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">Updated</TableCell>
                   <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">Actions</TableCell>
                 </TableRow>
               </TableHeader>
@@ -170,66 +149,72 @@ export default function DeliveryNoteTable({
                       {dn.netTotal.toFixed(2)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm">
-                      <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(dn.status)}`}
-                      >
+                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(dn.status)}`}>
                         {dn.status}
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
                       {formatDate(dn.createdAtUtc, true)}
                     </TableCell>
+                    <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
+                      {formatDate(dn.updatedAtUtc, true)}
+                    </TableCell>
                     <TableCell className="px-4 py-3 text-start">
-                      <div className="flex items-center gap-1">
-                        {/* Download PDF */}
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
                           title="Download PDF"
                           disabled={downloadingId === dn.id}
                           onClick={() => void handleDownload(dn)}
-                          className="rounded-md p-1.5 text-gray-500 transition hover:bg-gray-100 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-white/[0.06]"
+                          className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
                         >
                           {downloadingId === dn.id ? (
-                            <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                            </svg>
+                            <Loader2 size={14} className="animate-spin" />
                           ) : (
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                              <polyline points="14 2 14 8 20 8" />
-                              <line x1="12" y1="11" x2="12" y2="17" />
-                              <polyline points="9 14 12 17 15 14" />
-                            </svg>
+                            <Download size={14} />
                           )}
                         </button>
 
-                        {/* Submit */}
+                        {dn.status === "Draft" ? (
+                          <button
+                            type="button"
+                            title="Edit"
+                            onClick={() => navigate(`/operations/delivery-note/${dn.id}/edit`)}
+                            className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        ) : null}
+
                         {dn.status === "Draft" ? (
                           <button
                             type="button"
                             title="Submit"
-                            onClick={() => setConfirmAction({ id: dn.id, no: dn.no, status: "Submitted" })}
-                            className="rounded-md p-1.5 text-green-600 transition hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-500/10"
+                            disabled={actionId === dn.id}
+                            onClick={() => setConfirm({ id: dn.id, no: dn.no, type: "submit" })}
+                            className="rounded-lg border border-green-200 p-2 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-green-500/30 dark:text-green-400 dark:hover:bg-green-500/10"
                           >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="20 6 9 17 4 12" />
-                            </svg>
+                            {actionId === dn.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <CheckCircle size={14} />
+                            )}
                           </button>
                         ) : null}
 
-                        {/* Cancel */}
                         {dn.status !== "Cancelled" ? (
                           <button
                             type="button"
                             title="Cancel"
-                            onClick={() => setConfirmAction({ id: dn.id, no: dn.no, status: "Cancelled" })}
-                            className="rounded-md p-1.5 text-red-500 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                            disabled={actionId === dn.id}
+                            onClick={() => setConfirm({ id: dn.id, no: dn.no, type: "cancel" })}
+                            className="rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
                           >
-                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <line x1="18" y1="6" x2="6" y2="18" />
-                              <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
+                            {actionId === dn.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <XCircle size={14} />
+                            )}
                           </button>
                         ) : null}
                       </div>

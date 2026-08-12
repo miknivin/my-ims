@@ -3,7 +3,7 @@ namespace backend.Features.Inventory.DeliveryNotes;
 public sealed record DeliveryNoteSourceReferenceDto(string Mode, Guid? SalesOrderId, string? SalesOrderNo, string? DirectRefNo);
 public sealed record DeliveryNoteDocumentDto(string VoucherType, string No, DateOnly Date, DateOnly? ExpectedDeliveryDate);
 public sealed record DeliveryNoteCustomerInformationDto(Guid CustomerId, string CustomerNameSnapshot, string Address, string? ShippingAddress, string? Attention, string? Phone);
-public sealed record DeliveryNoteLogisticsDto(string? TransportMode, string? LrNo, DateOnly? LrDate, string? VehicleNo);
+public sealed record DeliveryNoteLogisticsDto(string? TransportMode, string? LrNo, DateOnly? LrDate, string? VehicleNo, string? EWayBillNo, string? TransporterName);
 public sealed record DeliveryNoteGeneralDto(string? Notes);
 public sealed record DeliveryNoteLineItemDto(Guid Id, Guid DeliveryNoteId, int SerialNo, Guid ProductId, string ProductNameSnapshot, string? HsnCode, Guid UnitId, string UnitName, Guid? WarehouseId, string? WarehouseName, decimal Rate, decimal Quantity, decimal GrossAmount, decimal DiscountPercent, decimal DiscountAmount, decimal TaxableAmount, decimal Total, string? Remark, Guid? SalesOrderLineId);
 public sealed record DeliveryNoteFooterDto(decimal NetTotal, decimal TotalQty, decimal TotalAmount);
@@ -16,7 +16,7 @@ public sealed record DeliveryNoteDto(Guid Id, DeliveryNoteSourceReferenceDto Sou
         new DeliveryNoteSourceReferenceDto(dn.SourceRef.Mode, dn.SourceRef.SalesOrderId, dn.SourceRef.SalesOrderNo, dn.SourceRef.DirectRefNo),
         new DeliveryNoteDocumentDto(dn.Document.VoucherType, dn.Document.No, dn.Document.Date, dn.Document.ExpectedDeliveryDate),
         new DeliveryNoteCustomerInformationDto(dn.CustomerInformation.CustomerId, dn.CustomerInformation.CustomerNameSnapshot, dn.CustomerInformation.Address, dn.CustomerInformation.ShippingAddress, dn.CustomerInformation.Attention, dn.CustomerInformation.Phone),
-        new DeliveryNoteLogisticsDto(dn.Logistics.TransportMode, dn.Logistics.LrNo, dn.Logistics.LrDate, dn.Logistics.VehicleNo),
+        new DeliveryNoteLogisticsDto(dn.Logistics.TransportMode, dn.Logistics.LrNo, dn.Logistics.LrDate, dn.Logistics.VehicleNo, dn.Logistics.EWayBillNo, dn.Logistics.TransporterName),
         new DeliveryNoteGeneralDto(dn.General.Notes),
         dn.Items.OrderBy(i => i.SerialNo).ThenBy(i => i.Id).Select(i => new DeliveryNoteLineItemDto(
             i.Id, i.DeliveryNoteId, i.SerialNo, i.ProductId, i.ProductNameSnapshot, i.HsnCode,

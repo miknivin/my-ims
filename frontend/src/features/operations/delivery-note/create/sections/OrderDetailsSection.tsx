@@ -85,7 +85,7 @@ export default function OrderDetailsSection() {
         </div>
 
         {state.sourceRef.mode === "AgainstSalesOrder" ? (
-          <div className="md:col-span-2">
+          <div>
             <label className={labelClass}>Sales Order</label>
             <AutocompleteSelect
               value={state.sourceRef.salesOrderNo}

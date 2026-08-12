@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle, Download, XCircle } from "lucide-react";
+import { CheckCircle, Download, Loader2, XCircle } from "lucide-react";
 import {
   PurchaseInvoiceListItem,
   useDownloadPurchaseInvoicePdfMutation,
@@ -196,7 +196,11 @@ export default function PurchaseInvoiceTable({
                           title="Download PDF"
                           className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
                         >
-                          <Download size={14} />
+                          {downloadingId === pi.id ? (
+                            <Loader2 size={14} className="animate-spin" />
+                          ) : (
+                            <Download size={14} />
+                          )}
                         </button>
                         {pi.status === "Draft" ? (
                           <button
@@ -209,7 +213,11 @@ export default function PurchaseInvoiceTable({
                             title="Submit"
                             className="rounded-lg border border-green-200 p-2 text-green-600 transition hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-green-500/30 dark:text-green-400 dark:hover:bg-green-500/10"
                           >
-                            <CheckCircle size={14} />
+                            {actionId === pi.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <CheckCircle size={14} />
+                            )}
                           </button>
                         ) : null}
                         {pi.status === "Submitted" ? (
@@ -223,7 +231,11 @@ export default function PurchaseInvoiceTable({
                             title="Cancel Invoice"
                             className="rounded-lg border border-red-200 p-2 text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
                           >
-                            <XCircle size={14} />
+                            {actionId === pi.id ? (
+                              <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                              <XCircle size={14} />
+                            )}
                           </button>
                         ) : null}
                       </div>

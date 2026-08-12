@@ -1,4 +1,5 @@
 import TransactionSectionCard from "@/features/operations/shared/TransactionSectionCard";
+import CodeInput from "@/shared/components/form/CodeInput";
 import { useSalesOrderForm } from "../SalesOrderFormContext";
 
 const inputClass =
@@ -26,13 +27,12 @@ export default function OrderDetailsSection() {
           </select>
         </div>
         <div>
-          <label className={labelClass}>Order No</label>
-          <input
-            className={inputClass}
+          <CodeInput
+            entity="sales-order"
+            label="Order No"
+            required
             value={orderDetails.no}
-            onChange={(event) =>
-              setOrderDetails({ no: event.target.value.toUpperCase() })
-            }
+            onChange={(value) => setOrderDetails({ no: value.toUpperCase() })}
             placeholder="SO-0001"
           />
         </div>

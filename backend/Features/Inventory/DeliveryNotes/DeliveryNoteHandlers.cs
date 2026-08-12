@@ -1,4 +1,5 @@
 using backend.Features.Masters.Customers;
+using backend.Features.Transactions.SalesInvoices;
 using backend.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -63,6 +64,12 @@ internal static class DeliveryNoteHandlers
         };
 
         db.DeliveryNotes.Add(dn);
+        if (dn.Status == DeliveryNoteStatuses.Submitted)
+        {
+            var effectsError = await ApplySubmissionEffectsAsync(db, dn, ct);
+            if (effectsError is not null)
+                return TypedResults.BadRequest(new ApiResponse<object>(false, effectsError, null));
+        }
         await db.SaveChangesAsync(ct);
 
         var created = await BuildQuery(db).FirstAsync(x => x.Id == dn.Id, ct);
@@ -87,8 +94,63 @@ internal static class DeliveryNoteHandlers
         if (transitionError is not null)
             return TypedResults.BadRequest(new ApiResponse<object>(false, transitionError, null));
 
+        if (nextStatus == DeliveryNoteStatuses.Submitted)
+        {
+            var effectsError = await ApplySubmissionEffectsAsync(db, dn, ct);
+            if (effectsError is not null)
+                return TypedResults.BadRequest(new ApiResponse<object>(false, effectsError, null));
+        }
+        else if (dn.Status == DeliveryNoteStatuses.Submitted && nextStatus == DeliveryNoteStatuses.Cancelled)
+        {
+            if (await HasLinkedSubmittedSalesInvoiceAsync(db, dn.Id, ct))
+                return TypedResults.BadRequest(new ApiResponse<object>(false, "Cannot cancel a delivery note that has a submitted sales invoice referencing it.", null));
+
+            await InventoryPostingService.RevertSourceAsync(db, StockSourceTypes.DeliveryNote, dn.Id, ct);
+
+            var journalError = await DeliveryNoteJournalPosting.ReverseAsync(
+                db, dn.Id, DateOnly.FromDateTime(DateTime.UtcNow), ct);
+            if (journalError is not null)
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalError, null));
+        }
+
         dn.Status = nextStatus;
         dn.UpdatedAtUtc = DateTime.UtcNow;
+        await db.SaveChangesAsync(ct);
+
+        var updated = await BuildQuery(db).FirstAsync(x => x.Id == id, ct);
+        return TypedResults.Ok(new ApiResponse<DeliveryNoteDto>(true, "Delivery note updated successfully.", DeliveryNoteDto.FromEntity(updated)));
+    }
+
+    internal static async Task<IResult> UpdateAsync(Guid id, CreateDeliveryNoteRequest request, AppDbContext db, CancellationToken ct)
+    {
+        var dn = await BuildQuery(db).FirstOrDefaultAsync(x => x.Id == id, ct);
+        if (dn is null)
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Delivery note not found.", null));
+
+        if (dn.Status != DeliveryNoteStatuses.Draft)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, "Only Draft delivery notes can be edited.", null));
+
+        var build = BuildDeliveryNote(request);
+        if (build.Error is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, build.Error, null));
+
+        build.Document!.No = dn.Document.No;
+
+        var resolveError = await ResolveReferencesAsync(db, build, ct);
+        if (resolveError is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, resolveError, null));
+
+        dn.SourceRef = build.SourceRef!;
+        dn.Document = build.Document!;
+        dn.CustomerInformation = build.CustomerInformation!;
+        dn.Logistics = build.Logistics!;
+        dn.General = build.General!;
+        dn.Footer = build.Footer!;
+        dn.UpdatedAtUtc = DateTime.UtcNow;
+
+        db.RemoveRange(dn.Items);
+        dn.Items = build.Items!;
+
         await db.SaveChangesAsync(ct);
 
         var updated = await BuildQuery(db).FirstAsync(x => x.Id == id, ct);
@@ -110,6 +172,31 @@ internal static class DeliveryNoteHandlers
         var bytes = await pdfService.GeneratePreviewPdfAsync(request, db, ct);
         return Results.File(bytes, "application/pdf", "DN-preview.pdf");
     }
+
+    private static async Task<string?> ApplySubmissionEffectsAsync(AppDbContext db, DeliveryNote dn, CancellationToken ct)
+    {
+        var inventorySettings = await InventorySettingsResolver.GetEffectiveSettingsAsync(db, ct);
+        var issueLines = dn.Items
+            .OrderBy(i => i.SerialNo)
+            .ThenBy(i => i.Id)
+            .Select(i => new InventoryIssuePostingLine(i.Id, i.ProductId, i.WarehouseId ?? Guid.Empty, i.Quantity, i.Remark))
+            .ToList();
+
+        var issueResult = await InventoryPostingService.ApplyIssuesAsync(
+            db, inventorySettings, StockSourceTypes.DeliveryNote, dn.Id, dn.Document.Date, issueLines, ct);
+        if (issueResult.Error is not null)
+            return issueResult.Error;
+
+        var totalCogs = issueResult.Costings!.Values.Sum(c => c.TotalCost);
+        return await DeliveryNoteJournalPosting.PostAsync(db, dn, totalCogs, ct);
+    }
+
+    private static Task<bool> HasLinkedSubmittedSalesInvoiceAsync(AppDbContext db, Guid dnId, CancellationToken ct) =>
+        db.SalesInvoices.AnyAsync(
+            si => si.SourceRef.Type == SalesInvoiceReferenceType.DeliveryNote
+                && si.SourceRef.ReferenceId == dnId
+                && si.Status == SalesInvoiceStatus.Submitted,
+            ct);
 
     private static DeliveryNoteBuildResult BuildDeliveryNote(CreateDeliveryNoteRequest req)
     {
@@ -144,7 +231,9 @@ internal static class DeliveryNoteHandlers
             TransportMode = NormalizeOptional(req.Logistics.TransportMode),
             LrNo = NormalizeOptional(req.Logistics.LrNo),
             LrDate = req.Logistics.LrDate,
-            VehicleNo = NormalizeOptional(req.Logistics.VehicleNo)
+            VehicleNo = NormalizeOptional(req.Logistics.VehicleNo),
+            EWayBillNo = NormalizeOptional(req.Logistics.EWayBillNo),
+            TransporterName = NormalizeOptional(req.Logistics.TransporterName)
         };
 
         var general = new DeliveryNoteGeneral

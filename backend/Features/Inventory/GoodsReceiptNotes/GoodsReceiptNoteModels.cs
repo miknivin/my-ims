@@ -91,6 +91,7 @@ public sealed class GoodsReceiptNoteLogistics
     public string? LrService { get; set; }
     public string? LrNo { get; set; }
     public DateOnly? LrDate { get; set; }
+    public string? EWayBillNo { get; set; }
 }
 
 public sealed class GoodsReceiptNoteGeneral

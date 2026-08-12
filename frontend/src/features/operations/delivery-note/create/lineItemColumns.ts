@@ -27,15 +27,16 @@ export interface DeliveryNoteLineColumnMeta {
   defaultWidth: number;
   minWidth: number;
   align?: "left" | "right" | "center";
+  required?: boolean;
 }
 
 export const DELIVERY_NOTE_LINE_COLUMNS: DeliveryNoteLineColumnMeta[] = [
-  { key: "productNameSnapshot", label: "Product", nature: "lookup", defaultSelected: true, defaultWidth: 260, minWidth: 180 },
+  { key: "productNameSnapshot", label: "Product", nature: "lookup", defaultSelected: true, defaultWidth: 260, minWidth: 180, required: true },
   { key: "hsnCode", label: "HSN", nature: "input", defaultSelected: false, defaultWidth: 110, minWidth: 90 },
-  { key: "warehouseId", label: "Warehouse", nature: "lookup", defaultSelected: true, defaultWidth: 160, minWidth: 130 },
-  { key: "unitId", label: "Unit", nature: "select", defaultSelected: true, defaultWidth: 120, minWidth: 90 },
+  { key: "warehouseId", label: "Warehouse", nature: "lookup", defaultSelected: true, defaultWidth: 160, minWidth: 130, required: true },
+  { key: "unitId", label: "Unit", nature: "select", defaultSelected: true, defaultWidth: 120, minWidth: 90, required: true },
   { key: "rate", label: "Rate", nature: "input", defaultSelected: true, defaultWidth: 110, minWidth: 90, align: "right" },
-  { key: "quantity", label: "Qty", nature: "input", defaultSelected: true, defaultWidth: 90, minWidth: 80, align: "right" },
+  { key: "quantity", label: "Qty", nature: "input", defaultSelected: true, defaultWidth: 90, minWidth: 80, align: "right", required: true },
   { key: "grossAmount", label: "Gross", nature: "readonly", defaultSelected: false, defaultWidth: 110, minWidth: 90, align: "right" },
   { key: "discountPercent", label: "Disc %", nature: "input", defaultSelected: true, defaultWidth: 100, minWidth: 90, align: "right" },
   { key: "discountAmount", label: "Disc Amt", nature: "readonly", defaultSelected: false, defaultWidth: 120, minWidth: 100, align: "right" },

@@ -72,6 +72,8 @@ public sealed class DeliveryNoteLogistics
     public string? LrNo { get; set; }
     public DateOnly? LrDate { get; set; }
     public string? VehicleNo { get; set; }
+    public string? EWayBillNo { get; set; }
+    public string? TransporterName { get; set; }
 }
 
 public sealed class DeliveryNoteGeneral

@@ -38,6 +38,7 @@ export interface PurchaseOrderLineColumnMeta {
   defaultWidth: number;
   minWidth: number;
   align?: "left" | "right" | "center";
+  required?: boolean;
 }
 
 export const PURCHASE_ORDER_LINE_COLUMNS: PurchaseOrderLineColumnMeta[] = [
@@ -72,6 +73,7 @@ export const PURCHASE_ORDER_LINE_COLUMNS: PurchaseOrderLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 250,
     minWidth: 100,
+    required: true,
   },
   {
     key: "hsnCode",
@@ -89,6 +91,7 @@ export const PURCHASE_ORDER_LINE_COLUMNS: PurchaseOrderLineColumnMeta[] = [
     defaultWidth: 80,
     minWidth: 65,
     align: "right",
+    required: true,
   },
   {
     key: "unitId",
@@ -97,6 +100,7 @@ export const PURCHASE_ORDER_LINE_COLUMNS: PurchaseOrderLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 100,
     minWidth: 85,
+    required: true,
   },
   {
     key: "rate",

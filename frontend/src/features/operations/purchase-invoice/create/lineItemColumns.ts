@@ -37,6 +37,7 @@ export interface PurchaseInvoiceLineColumnMeta {
   defaultWidth: number;
   minWidth: number;
   align?: "left" | "right" | "center";
+  required?: boolean;
 }
 
 export const PURCHASE_INVOICE_LINE_COLUMNS: PurchaseInvoiceLineColumnMeta[] = [
@@ -55,6 +56,7 @@ export const PURCHASE_INVOICE_LINE_COLUMNS: PurchaseInvoiceLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 280,
     minWidth: 180,
+    required: true,
   },
   {
     key: "hsnCode",
@@ -72,6 +74,7 @@ export const PURCHASE_INVOICE_LINE_COLUMNS: PurchaseInvoiceLineColumnMeta[] = [
     defaultWidth: 90,
     minWidth: 80,
     align: "right",
+    required: true,
   },
   {
     key: "foc",
@@ -89,6 +92,7 @@ export const PURCHASE_INVOICE_LINE_COLUMNS: PurchaseInvoiceLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 120,
     minWidth: 100,
+    required: true,
   },
   {
     key: "rate",
@@ -214,6 +218,7 @@ export const PURCHASE_INVOICE_LINE_COLUMNS: PurchaseInvoiceLineColumnMeta[] = [
     defaultSelected: true,
     defaultWidth: 150,
     minWidth: 130,
+    required: true,
   },
   {
     key: "lineTotal",

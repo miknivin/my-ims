@@ -24,7 +24,8 @@ internal static class PurchaseCreditNoteHandlers
             .Include(current => current.Items)
                 .ThenInclude(item => item.Warehouse)
             .Include(current => current.Additions)
-                .ThenInclude(item => item.Ledger);
+                .ThenInclude(item => item.Ledger)
+            .AsSplitQuery();
     }
 
     internal static async Task<IResult> GetAllAsync(AppDbContext dbContext, CancellationToken cancellationToken)

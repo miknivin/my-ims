@@ -23,7 +23,8 @@ internal static class SalesInvoiceHandlers
             .Include(current => current.Items)
                 .ThenInclude(item => item.Warehouse)
             .Include(current => current.Additions)
-                .ThenInclude(item => item.Ledger);
+                .ThenInclude(item => item.Ledger)
+            .AsSplitQuery();
     }
 
     internal static async Task<IResult> GetAllAsync(
@@ -109,10 +110,13 @@ internal static class SalesInvoiceHandlers
         dbContext.SalesInvoices.Add(salesInvoice);
         if (salesInvoice.Status == SalesInvoiceStatus.Submitted)
         {
-            var stockError = await ApplySubmissionStockEffectsAsync(dbContext, salesInvoice, cancellationToken);
-            if (stockError is not null)
+            if (salesInvoice.SourceRef.Type != SalesInvoiceReferenceType.DeliveryNote)
             {
-                return TypedResults.BadRequest(new ApiResponse<object>(false, stockError, null));
+                var stockError = await ApplySubmissionStockEffectsAsync(dbContext, salesInvoice, cancellationToken);
+                if (stockError is not null)
+                {
+                    return TypedResults.BadRequest(new ApiResponse<object>(false, stockError, null));
+                }
             }
 
             var journalError = await SalesInvoiceJournalPosting.PostAsync(
@@ -154,10 +158,13 @@ internal static class SalesInvoiceHandlers
 
         if (nextStatus == SalesInvoiceStatus.Submitted)
         {
-            var stockError = await ApplySubmissionStockEffectsAsync(dbContext, salesInvoice, cancellationToken);
-            if (stockError is not null)
+            if (salesInvoice.SourceRef.Type != SalesInvoiceReferenceType.DeliveryNote)
             {
-                return TypedResults.BadRequest(new ApiResponse<object>(false, stockError, null));
+                var stockError = await ApplySubmissionStockEffectsAsync(dbContext, salesInvoice, cancellationToken);
+                if (stockError is not null)
+                {
+                    return TypedResults.BadRequest(new ApiResponse<object>(false, stockError, null));
+                }
             }
 
             var journalError = await SalesInvoiceJournalPosting.PostAsync(
@@ -171,7 +178,10 @@ internal static class SalesInvoiceHandlers
         }
         else if (salesInvoice.Status == SalesInvoiceStatus.Submitted && nextStatus == SalesInvoiceStatus.Cancelled)
         {
-            await InventoryPostingService.RevertSourceAsync(dbContext, StockSourceTypes.SalesInvoice, salesInvoice.Id, cancellationToken);
+            if (salesInvoice.SourceRef.Type != SalesInvoiceReferenceType.DeliveryNote)
+            {
+                await InventoryPostingService.RevertSourceAsync(dbContext, StockSourceTypes.SalesInvoice, salesInvoice.Id, cancellationToken);
+            }
 
             var journalError = await SalesInvoiceJournalPosting.ReverseAsync(
                 dbContext,

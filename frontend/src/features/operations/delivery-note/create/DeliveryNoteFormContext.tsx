@@ -37,11 +37,13 @@ const DeliveryNoteFormContext = createContext<
 
 export function DeliveryNoteFormProvider({
   children,
+  initialState,
 }: {
   children: React.ReactNode;
+  initialState?: DeliveryNoteFormState;
 }) {
   const [state, setState] = useState<DeliveryNoteFormState>(
-    () => loadDeliveryNoteDraft() ?? createDeliveryNoteFormState(),
+    () => initialState ?? loadDeliveryNoteDraft() ?? createDeliveryNoteFormState(),
   );
 
   const value = useMemo<DeliveryNoteFormContextValue>(

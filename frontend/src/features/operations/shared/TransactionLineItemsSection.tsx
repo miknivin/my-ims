@@ -332,6 +332,7 @@ export default function TransactionLineItemsSection<
               {columns.map((column) => {
                 const checked = selectedColumns.includes(column.key);
                 const isOnlySelected = checked && selectedColumns.length === 1;
+                const isRequired = !!column.required;
 
                 return (
                   <label
@@ -340,9 +341,9 @@ export default function TransactionLineItemsSection<
                   >
                     <input
                       type="checkbox"
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
-                      checked={checked}
-                      disabled={isOnlySelected}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
+                      checked={checked || isRequired}
+                      disabled={isOnlySelected || isRequired}
                       onChange={(event) => {
                         if (event.target.checked) {
                           setSelectedColumns((current) => {
@@ -367,13 +368,15 @@ export default function TransactionLineItemsSection<
                         {column.label}
                       </span>
                       <span className="mt-1 block text-xs text-gray-500 dark:text-gray-400">
-                        {column.nature === "readonly"
-                          ? "Read-only"
-                          : column.nature === "lookup"
-                            ? "Lookup input"
-                            : column.nature === "select"
-                              ? "Select input"
-                              : "Editable input"}
+                        {isRequired
+                          ? "Required — always visible"
+                          : column.nature === "readonly"
+                            ? "Read-only"
+                            : column.nature === "lookup"
+                              ? "Lookup input"
+                              : column.nature === "select"
+                                ? "Select input"
+                                : "Editable input"}
                       </span>
                     </span>
                   </label>

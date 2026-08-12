@@ -1,4 +1,5 @@
 import { useGetLedgersQuery } from "@/redux/api/ledgerApi";
+import AutocompleteSelect from "@/shared/components/form/AutocompleteSelect";
 
 export type AdditionType = "Addition" | "Deduction";
 
@@ -43,6 +44,17 @@ export default function AdditionsSection<TAddition extends AdditionRowState>({
   footerLayoutClassName = "grid gap-4 md:grid-cols-2",
 }: AdditionsSectionProps<TAddition>) {
   const { data: ledgers = [] } = useGetLedgersQuery();
+
+  const searchLedgers = (keyword: string) => {
+    const kw = keyword.toLowerCase();
+    return Promise.resolve(
+      ledgers.filter(
+        (l) =>
+          l.name.toLowerCase().includes(kw) ||
+          l.code.toLowerCase().includes(kw),
+      ),
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -108,27 +120,27 @@ export default function AdditionsSection<TAddition extends AdditionRowState>({
                 <option value="Deduction">Deduction</option>
               </select>
 
-              <select
-                className={inputClass}
-                value={addition.ledgerId ?? ""}
-                onChange={(event) => {
-                  const ledger = ledgers.find(
-                    (current) => current.id === event.target.value,
-                  );
-
+              <AutocompleteSelect
+                value={addition.ledgerName}
+                selectedKey={addition.ledgerId}
+                placeholder="Select ledger"
+                search={searchLedgers}
+                getItems={(result) => result}
+                getOptionKey={(item) => item.id}
+                getOptionLabel={(item) => item.name}
+                onInputChange={(value) =>
                   onUpdate(addition.rowId, {
-                    ledgerId: ledger?.id ?? null,
-                    ledgerName: ledger?.name ?? "",
-                  } as Partial<TAddition>);
-                }}
-              >
-                <option value="">Select ledger</option>
-                {ledgers.map((ledger) => (
-                  <option key={ledger.id} value={ledger.id}>
-                    {ledger.name}
-                  </option>
-                ))}
-              </select>
+                    ledgerId: null,
+                    ledgerName: value,
+                  } as Partial<TAddition>)
+                }
+                onSelect={(item) =>
+                  onUpdate(addition.rowId, {
+                    ledgerId: item?.id ?? null,
+                    ledgerName: item?.name ?? "",
+                  } as Partial<TAddition>)
+                }
+              />
 
               <input
                 className={inputClass}

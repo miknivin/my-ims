@@ -30,6 +30,7 @@ export interface SalesAdjustmentNoteLineColumnMeta {
   defaultWidth: number;
   minWidth: number;
   align?: "left" | "right" | "center";
+  required?: boolean;
 }
 
 export const SALES_ADJUSTMENT_NOTE_LINE_COLUMNS: SalesAdjustmentNoteLineColumnMeta[] =
@@ -49,6 +50,7 @@ export const SALES_ADJUSTMENT_NOTE_LINE_COLUMNS: SalesAdjustmentNoteLineColumnMe
       defaultSelected: true,
       defaultWidth: 280,
       minWidth: 200,
+      required: true,
     },
     {
       key: "hsnCode",
@@ -65,6 +67,7 @@ export const SALES_ADJUSTMENT_NOTE_LINE_COLUMNS: SalesAdjustmentNoteLineColumnMe
       defaultSelected: true,
       defaultWidth: 120,
       minWidth: 100,
+      required: true,
     },
     {
       key: "quantity",
@@ -74,6 +77,7 @@ export const SALES_ADJUSTMENT_NOTE_LINE_COLUMNS: SalesAdjustmentNoteLineColumnMe
       defaultWidth: 90,
       minWidth: 80,
       align: "right",
+      required: true,
     },
     {
       key: "rate",

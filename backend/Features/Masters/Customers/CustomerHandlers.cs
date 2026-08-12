@@ -227,6 +227,9 @@ internal static class CustomerHandlers
         customer.UpdatedAtUtc = DateTime.UtcNow;
 
         var hadPreviousOb = customer.OpeningBalance is not null;
+        var oldObAmount = customer.OpeningBalance?.Amount;
+        var oldObType = customer.OpeningBalance?.BalanceType;
+        var oldObDate = customer.OpeningBalance?.AsOfDate;
 
         if (buildResult.OpeningBalance is null)
         {
@@ -257,9 +260,20 @@ internal static class CustomerHandlers
             customer.OpeningBalance.UpdatedAtUtc = DateTime.UtcNow;
         }
 
-        var journalUpdateError = await CustomerOpeningBalanceJournalPosting.PrepareUpdateAsync(dbContext, customer, hadPreviousOb, cancellationToken);
-        if (journalUpdateError is not null)
-            return TypedResults.BadRequest(new ApiResponse<object>(false, journalUpdateError, null));
+        var obActuallyChanged = hadPreviousOb && (
+            customer.OpeningBalance is null ||
+            customer.OpeningBalance.Amount != oldObAmount ||
+            customer.OpeningBalance.BalanceType != oldObType ||
+            customer.OpeningBalance.AsOfDate != oldObDate);
+
+        var needsJournalUpdate = obActuallyChanged || (!hadPreviousOb && customer.OpeningBalance is not null);
+
+        if (needsJournalUpdate)
+        {
+            var journalUpdateError = await CustomerOpeningBalanceJournalPosting.PrepareUpdateAsync(dbContext, customer, obActuallyChanged, cancellationToken);
+            if (journalUpdateError is not null)
+                return TypedResults.BadRequest(new ApiResponse<object>(false, journalUpdateError, null));
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -444,20 +458,22 @@ internal static class CustomerHandlers
 
         if (openingBalanceRequest is not null)
         {
-            if (openingBalanceRequest.Amount < 0)
+            if (openingBalanceRequest.Amount <= 0)
             {
-                return new CustomerRequestBuildResult("Opening balance amount cannot be negative.");
+                openingBalance = null;
             }
-
-            if (!BalanceTypes.All.Contains(openingBalanceRequest.BalanceType, StringComparer.OrdinalIgnoreCase))
+            else
             {
-                return new CustomerRequestBuildResult("Opening balance type must be either Dr or Cr.");
+                if (!BalanceTypes.All.Contains(openingBalanceRequest.BalanceType, StringComparer.OrdinalIgnoreCase))
+                {
+                    return new CustomerRequestBuildResult("Opening balance type must be either Dr or Cr.");
+                }
+
+                openingBalance = openingBalanceRequest with
+                {
+                    BalanceType = BalanceTypes.All.First(value => value.Equals(openingBalanceRequest.BalanceType, StringComparison.OrdinalIgnoreCase))
+                };
             }
-
-            openingBalance = openingBalanceRequest with
-            {
-                BalanceType = BalanceTypes.All.First(value => value.Equals(openingBalanceRequest.BalanceType, StringComparison.OrdinalIgnoreCase))
-            };
         }
 
         normalizedStatus = CustomerStatuses.All.First(value => value.Equals(requestedStatus, StringComparison.OrdinalIgnoreCase));

@@ -19,6 +19,8 @@ public sealed class DeliveryNotePdfModel
     public string? TransportMode { get; init; }
     public string? LrNo { get; init; }
     public string? VehicleNo { get; init; }
+    public string? EWayBillNo { get; init; }
+    public string? TransporterName { get; init; }
 
     public string? Notes { get; init; }
 

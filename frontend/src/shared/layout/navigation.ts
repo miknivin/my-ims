@@ -102,10 +102,6 @@ export const appNavItems: AppNavItem[] = [
             name: "Journal Vouchers",
             path: "/operations/accounting/journal-vouchers",
           },
-          {
-            name: "Journal Entries",
-            path: "/operations/accounting/journal-entries",
-          },
         ],
       },
       {

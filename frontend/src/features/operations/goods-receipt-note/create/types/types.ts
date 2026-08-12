@@ -46,6 +46,7 @@ export interface GoodsReceiptLogisticsState {
   lrService: string;
   lrNo: string;
   lrDate: string;
+  eWayBillNo: string;
 }
 
 export interface GoodsReceiptGeneralState {
@@ -168,6 +169,7 @@ export function createGoodsReceiptFormState(
       lrService: "",
       lrNo: "",
       lrDate: today,
+      eWayBillNo: "",
     },
     general: {
       ownProductsOnly: false,
@@ -331,6 +333,7 @@ export function toGoodsReceiptPayload(
       lrService: state.logistics.lrService || null,
       lrNo: state.logistics.lrNo || null,
       lrDate: state.logistics.lrDate || null,
+      eWayBillNo: state.logistics.eWayBillNo || null,
     },
     general: {
       ownProductsOnly: state.general.ownProductsOnly,
