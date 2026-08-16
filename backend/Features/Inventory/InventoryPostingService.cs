@@ -630,8 +630,12 @@ public static class InventoryPostingService
             cancellationToken);
     }
 
-    private static DateTime ToPostingDateUtc(DateOnly postingDate) =>
-        DateTime.SpecifyKind(postingDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+    private static DateTime ToPostingDateUtc(DateOnly postingDate)
+    {
+        var now = DateTime.UtcNow;
+        return new DateTime(postingDate.Year, postingDate.Month, postingDate.Day,
+                            now.Hour, now.Minute, now.Second, DateTimeKind.Utc);
+    }
 
     private static decimal RoundQuantity(decimal value) =>
         Math.Round(value, 2, MidpointRounding.AwayFromZero);

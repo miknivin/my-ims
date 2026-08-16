@@ -2,6 +2,7 @@ using backend.Features.Masters.Ledgers;
 using backend.Features.Masters.Vendors;
 using backend.Features.Transactions.PurchaseInvoices;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Transactions.BillWisePayments;
@@ -92,6 +93,7 @@ internal static class BillWisePaymentHandlers
     internal static async Task<IResult> CreateAsync(
         CreateBillWisePaymentRequest request,
         AppDbContext dbContext,
+        ReportInvalidationService sseService,
         CancellationToken cancellationToken)
     {
         var buildResult = BuildBillWisePaymentRequest(
@@ -144,6 +146,7 @@ internal static class BillWisePaymentHandlers
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var created = await BuildQuery(dbContext).FirstAsync(current => current.Id == buildResult.Payment.Id, cancellationToken);
+        if (buildResult.Payment.Status == BillWiseDocumentStatus.Submitted) sseService.Publish(InvalidationGroups.PaymentPosted);
         return TypedResults.Created(
             $"/api/transactions/bill-wise-payments/{created.Id}",
             new ApiResponse<BillWisePaymentDto>(true, "Bill wise payment created successfully.", BillWisePaymentDto.FromEntity(created)));
@@ -153,6 +156,7 @@ internal static class BillWisePaymentHandlers
         Guid id,
         UpdateBillWisePaymentStatusRequest request,
         AppDbContext dbContext,
+        ReportInvalidationService sseService,
         CancellationToken cancellationToken)
     {
         var payment = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
@@ -211,6 +215,7 @@ internal static class BillWisePaymentHandlers
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        sseService.Publish(InvalidationGroups.PaymentPosted);
         return TypedResults.Ok(new ApiResponse<BillWisePaymentDto>(
             true,
             "Bill wise payment updated successfully.",

@@ -8,6 +8,7 @@ using backend.Features.Masters.Warehouses;
 using backend.Features.Transactions;
 using backend.Features.Transactions.PurchaseInvoices;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Transactions.PurchaseCreditNotes;
@@ -109,6 +110,7 @@ internal static class PurchaseCreditNoteHandlers
         Guid id,
         UpdatePurchaseCreditNoteStatusRequest request,
         AppDbContext dbContext,
+        ReportInvalidationService sseService,
         CancellationToken cancellationToken)
     {
         var purchaseCreditNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
@@ -170,6 +172,7 @@ internal static class PurchaseCreditNoteHandlers
         await transaction.CommitAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        sseService.Publish(InvalidationGroups.PurchaseCreditDebitPosted);
         return TypedResults.Ok(new ApiResponse<PurchaseCreditNoteDto>(
             true,
             "Purchase credit note updated successfully.",

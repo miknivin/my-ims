@@ -7,6 +7,7 @@ using backend.Features.Masters.Uoms;
 using backend.Features.Masters.Warehouses;
 using backend.Features.Transactions.SalesOrders;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Transactions.SalesInvoices;
@@ -72,7 +73,7 @@ internal static class SalesInvoiceHandlers
             : TypedResults.Ok(new ApiResponse<SalesInvoiceDto>(true, "Sales invoice fetched successfully.", SalesInvoiceDto.FromEntity(salesInvoice)));
     }
 
-    internal static async Task<IResult> CreateAsync(CreateSalesInvoiceRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    internal static async Task<IResult> CreateAsync(CreateSalesInvoiceRequest request, AppDbContext dbContext, ReportInvalidationService sseService, CancellationToken cancellationToken)
     {
         var buildResult = BuildSalesInvoiceRequest(request.SourceRef, request.Document, request.CustomerInformation, request.FinancialDetails, request.General, request.Items, request.Additions, request.Footer);
         if (buildResult.Error is not null)
@@ -130,12 +131,13 @@ internal static class SalesInvoiceHandlers
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (salesInvoice.Status == SalesInvoiceStatus.Submitted) sseService.Publish(InvalidationGroups.SalesPosted);
 
         var created = await BuildQuery(dbContext).FirstAsync(current => current.Id == salesInvoice.Id, cancellationToken);
         return TypedResults.Created($"/api/transactions/sales-invoices/{salesInvoice.Id}", new ApiResponse<SalesInvoiceDto>(true, "Sales invoice created successfully.", SalesInvoiceDto.FromEntity(created)));
     }
 
-    internal static async Task<IResult> UpdateStatusAsync(Guid id, UpdateSalesInvoiceStatusRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    internal static async Task<IResult> UpdateStatusAsync(Guid id, UpdateSalesInvoiceStatusRequest request, AppDbContext dbContext, ReportInvalidationService sseService, CancellationToken cancellationToken)
     {
         var salesInvoice = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (salesInvoice is null)
@@ -200,6 +202,7 @@ internal static class SalesInvoiceHandlers
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        sseService.Publish(InvalidationGroups.SalesPosted);
         return TypedResults.Ok(new ApiResponse<SalesInvoiceDto>(true, "Sales invoice updated successfully.", SalesInvoiceDto.FromEntity(updated)));
     }
 

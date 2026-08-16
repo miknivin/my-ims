@@ -17,7 +17,8 @@ public sealed record GeneralSettingsRequest(
     string? Pincode,
     string? Country,
     string? Gstin,
-    string? Pan);
+    string? Pan,
+    string? TimeZoneId);
 
 public sealed record InventorySettingsRequest(
     InventoryStockControlSettingsRequest StockControl,

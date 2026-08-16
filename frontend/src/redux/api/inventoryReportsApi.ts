@@ -26,8 +26,75 @@ export interface StockSummaryReport {
   rows: StockSummaryRow[];
 }
 
+// ── Stock Statement ────────────────────────────────────────────────────────────
+export interface StockStatementFilter {
+  fromDate: string;
+  toDate: string;
+  groupBy?: "category" | "warehouse";
+  categoryId?: string;
+  warehouseId?: string;
+  showZeroStock?: boolean;
+}
+
+export interface StockStatementRow {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  categoryName: string | null;
+  warehouseName: string | null;
+  uom: string;
+  openingQty: number;
+  openingValue: number;
+  inwardQty: number;
+  inwardValue: number;
+  outwardQty: number;
+  outwardValue: number;
+  closingQty: number;
+  closingValue: number;
+  closingRate: number;
+}
+
+export interface StockStatementReport {
+  fromDate: string;
+  toDate: string;
+  groupBy: string;
+  totalOpeningValue: number;
+  totalInwardValue: number;
+  totalOutwardValue: number;
+  totalClosingValue: number;
+  rows: StockStatementRow[];
+}
+
+// ── Stock Summary Enhanced ─────────────────────────────────────────────────────
+export interface StockSummaryEnhancedFilter {
+  groupBy?: "category" | "warehouse";
+  asOfDate?: string;
+  categoryId?: string;
+  warehouseId?: string;
+  showZeroStock?: boolean;
+}
+
+export interface StockSummaryEnhancedRow {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  categoryName: string | null;
+  warehouseName: string | null;
+  uom: string;
+  quantity: number;
+}
+
+export interface StockSummaryEnhancedReport {
+  groupBy: string;
+  asOfDate: string | null;
+  totalQuantity: number;
+  rows: StockSummaryEnhancedRow[];
+}
+
 // ── Item-wise Stock ──────────────────────────────────────────────────────────────
 export interface ItemWiseStockFilter {
+  fromDate?: string;
+  toDate?: string;
   itemId?: string;
   warehouseId?: string;
   categoryId?: string;
@@ -38,16 +105,21 @@ export interface ItemWiseStockRow {
   itemId: string;
   itemCode: string;
   itemName: string;
-  warehouseId: string;
-  warehouseName: string;
-  quantity: number;
-  rate: number;
-  value: number;
+  categoryName: string | null;
+  uom: string;
+  openingQty: number;
+  inwardQty: number;
+  outwardQty: number;
+  closingQty: number;
+  closingRate: number;
+  closingValue: number;
 }
 
 export interface ItemWiseStockReport {
-  totalQuantity: number;
-  totalValue: number;
+  fromDate: string;
+  toDate: string;
+  totalClosingQty: number;
+  totalClosingValue: number;
   rows: ItemWiseStockRow[];
 }
 
@@ -87,6 +159,7 @@ export interface StockMovementReport {
 
 // ── Inventory Valuation ──────────────────────────────────────────────────────────
 export interface InventoryValuationFilter {
+  groupBy?: "category" | "warehouse";
   asOfDate?: string;
   categoryId?: string;
   warehouseId?: string;
@@ -108,6 +181,7 @@ export interface InventoryValuationRow {
 
 export interface InventoryValuationReport {
   asOfDate: string;
+  groupBy: string;
   totalQuantity: number;
   totalValue: number;
   rows: InventoryValuationRow[];
@@ -120,8 +194,37 @@ export const inventoryReportsApi = createApi({
     baseUrl: "/api/reports/inventory",
     credentials: "include",
   }),
-  tagTypes: ["StockSummary", "ItemWiseStock", "StockMovement", "InventoryValuation"],
+  tagTypes: ["StockSummary", "StockSummaryEnhanced", "StockStatement", "ItemWiseStock", "StockMovement", "InventoryValuation"],
   endpoints: (builder) => ({
+    getStockStatement: builder.query<StockStatementReport, StockStatementFilter>({
+      query: (params) => ({
+        url: "/stock-statement",
+        params: {
+          fromDate: params.fromDate,
+          toDate: params.toDate,
+          groupBy: params.groupBy || undefined,
+          categoryId: params.categoryId || undefined,
+          warehouseId: params.warehouseId || undefined,
+          showZeroStock: params.showZeroStock || undefined,
+        },
+      }),
+      transformResponse: (r: ApiResponse<StockStatementReport>) => r.data,
+      providesTags: ["StockStatement"],
+    }),
+    getStockSummaryEnhanced: builder.query<StockSummaryEnhancedReport, StockSummaryEnhancedFilter | void>({
+      query: (params) => ({
+        url: "/stock-summary-enhanced",
+        params: {
+          groupBy: params?.groupBy || undefined,
+          asOfDate: params?.asOfDate || undefined,
+          categoryId: params?.categoryId || undefined,
+          warehouseId: params?.warehouseId || undefined,
+          showZeroStock: params?.showZeroStock || undefined,
+        },
+      }),
+      transformResponse: (r: ApiResponse<StockSummaryEnhancedReport>) => r.data,
+      providesTags: ["StockSummaryEnhanced"],
+    }),
     getStockSummary: builder.query<StockSummaryReport, StockSummaryFilter | void>({
       query: (params) => ({
         url: "/stock-summary",
@@ -138,6 +241,8 @@ export const inventoryReportsApi = createApi({
       query: (params) => ({
         url: "/item-wise-stock",
         params: {
+          fromDate: params?.fromDate || undefined,
+          toDate: params?.toDate || undefined,
           itemId: params?.itemId || undefined,
           warehouseId: params?.warehouseId || undefined,
           categoryId: params?.categoryId || undefined,
@@ -164,6 +269,7 @@ export const inventoryReportsApi = createApi({
       query: (params) => ({
         url: "/inventory-valuation",
         params: {
+          groupBy: params?.groupBy || undefined,
           asOfDate: params?.asOfDate || undefined,
           categoryId: params?.categoryId || undefined,
           warehouseId: params?.warehouseId || undefined,
@@ -177,6 +283,8 @@ export const inventoryReportsApi = createApi({
 });
 
 export const {
+  useGetStockStatementQuery,
+  useGetStockSummaryEnhancedQuery,
   useGetStockSummaryQuery,
   useGetItemWiseStockQuery,
   useGetStockMovementQuery,

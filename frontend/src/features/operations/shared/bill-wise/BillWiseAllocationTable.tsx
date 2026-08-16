@@ -6,9 +6,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
+import { useFmtDate } from "@/shared/hooks/useFmtDate";
 import {
   BillWiseAllocationRow,
-  formatDate,
   getOutstandingAfter,
 } from "./types";
 
@@ -34,6 +34,7 @@ export default function BillWiseAllocationTable({
   onPaidAmountChange,
   onDiscountAmountChange,
 }: BillWiseAllocationTableProps) {
+  const fmtDate = useFmtDate();
   return (
     <TransactionSectionCard title={title}>
       {isLoading ? (
@@ -91,10 +92,10 @@ export default function BillWiseAllocationTable({
                         {row.sourceNo}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(row.sourceDate)}
+                        {fmtDate(row.sourceDate)}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                        {row.sourceDueDate ? formatDate(row.sourceDueDate) : "-"}
+                        {row.sourceDueDate ? fmtDate(row.sourceDueDate) : "-"}
                       </TableCell>
                       <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
                         {row.sourceReferenceNo || "-"}

@@ -8,6 +8,7 @@ using backend.Features.Masters.Warehouses;
 using backend.Features.Transactions;
 using backend.Features.Transactions.SalesInvoices;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Transactions.SalesDebitNotes;
@@ -105,6 +106,7 @@ internal static class SalesDebitNoteHandlers
         Guid id,
         UpdateSalesDebitNoteStatusRequest request,
         AppDbContext dbContext,
+        ReportInvalidationService sseService,
         CancellationToken cancellationToken)
     {
         var salesDebitNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
@@ -144,6 +146,7 @@ internal static class SalesDebitNoteHandlers
         salesDebitNote.UpdatedAtUtc = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        sseService.Publish(InvalidationGroups.SalesCreditDebitPosted);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
         return TypedResults.Ok(new ApiResponse<SalesDebitNoteDto>(

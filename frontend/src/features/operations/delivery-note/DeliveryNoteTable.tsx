@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { CheckCircle, Download, Loader2, Pencil, XCircle } from "lucide-react";
+import { CheckCircle, Download, Eye, Loader2, Pencil, XCircle } from "lucide-react";
+import { useFmtDate } from "@/shared/hooks/useFmtDate";
 import {
   DeliveryNoteListItem,
   useDownloadDeliveryNotePdfMutation,
@@ -21,17 +22,6 @@ interface DeliveryNoteTableProps {
   isError: boolean;
 }
 
-function formatDate(value: string, includeTime = false) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "-";
-  return parsed.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    ...(includeTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-  });
-}
-
 function statusBadgeClass(status: string) {
   if (status === "Draft")
     return "bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-400";
@@ -45,6 +35,7 @@ export default function DeliveryNoteTable({
   isLoading,
   isError,
 }: DeliveryNoteTableProps) {
+  const fmtDate = useFmtDate();
   const navigate = useNavigate();
   const [downloadPdf] = useDownloadDeliveryNotePdfMutation();
   const [updateStatus] = useUpdateDeliveryNoteStatusMutation();
@@ -140,7 +131,7 @@ export default function DeliveryNoteTable({
                       {dn.no}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(dn.date)}
+                      {fmtDate(dn.date)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
                       {dn.customerName}
@@ -154,13 +145,21 @@ export default function DeliveryNoteTable({
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(dn.createdAtUtc, true)}
+                      {fmtDate(dn.createdAtUtc, true)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(dn.updatedAtUtc, true)}
+                      {fmtDate(dn.updatedAtUtc, true)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start">
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          title="View"
+                          onClick={() => navigate(`/operations/delivery-note/${dn.id}`)}
+                          className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                        >
+                          <Eye size={14} />
+                        </button>
                         <button
                           type="button"
                           title="Download PDF"

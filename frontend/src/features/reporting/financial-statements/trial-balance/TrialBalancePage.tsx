@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useGetTrialBalanceQuery } from "@/redux/api/financialStatementsApi";
 import DateRangePicker, { DateRangeValue } from "@/shared/components/form/DateRangePicker";
 import Button from "@/shared/components/ui/button/Button";
@@ -9,23 +10,45 @@ import TrialBalanceFilterForm, {
 } from "./TrialBalanceFilterForm";
 import TrialBalanceTable from "./TrialBalanceTable";
 
-const defaultFilters: TrialBalanceFilterValues = { showZeroBalances: false };
+const defaultFilters: TrialBalanceFilterValues = {
+  fromDate: "",
+  toDate: "",
+  showZeroBalances: false,
+};
 
 const fmt = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function TrialBalancePage() {
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRangeValue>({ fromDate: "", toDate: "" });
-  const [appliedFilters, setAppliedFilters] = useState<TrialBalanceFilterValues>(defaultFilters);
-  const [draftFilters, setDraftFilters] = useState<TrialBalanceFilterValues>(defaultFilters);
+function filtersFromParams(params: URLSearchParams): TrialBalanceFilterValues {
+  return {
+    fromDate: params.get("fromDate") ?? "",
+    toDate: params.get("toDate") ?? "",
+    showZeroBalances: params.get("showZeroBalances") === "true",
+  };
+}
 
-  const skip = !dateRange.fromDate || !dateRange.toDate;
+function filtersToParams(f: TrialBalanceFilterValues): URLSearchParams {
+  const p = new URLSearchParams();
+  if (f.fromDate) p.set("fromDate", f.fromDate);
+  if (f.toDate) p.set("toDate", f.toDate);
+  if (f.showZeroBalances) p.set("showZeroBalances", "true");
+  return p;
+}
+
+export default function TrialBalancePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [appliedFilters, setAppliedFilters] = useState<TrialBalanceFilterValues>(
+    () => filtersFromParams(searchParams),
+  );
+  const [draftFilters, setDraftFilters] = useState<TrialBalanceFilterValues>(appliedFilters);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const skip = !appliedFilters.fromDate || !appliedFilters.toDate;
 
   const { data, isLoading, isError } = useGetTrialBalanceQuery(
     {
-      fromDate: dateRange.fromDate,
-      toDate: dateRange.toDate,
+      fromDate: appliedFilters.fromDate,
+      toDate: appliedFilters.toDate,
       showZeroBalances: appliedFilters.showZeroBalances || undefined,
     },
     { skip },
@@ -33,16 +56,25 @@ export default function TrialBalancePage() {
 
   const totals = data?.totals;
 
-  const handleDateChange = (range: DateRangeValue) => setDateRange(range);
+  const commit = (next: TrialBalanceFilterValues) => {
+    setAppliedFilters(next);
+    setSearchParams(filtersToParams(next), { replace: true });
+  };
+
+  const handleDateRangeChange = (range: DateRangeValue) => {
+    const next = { ...appliedFilters, ...range };
+    setDraftFilters((c) => ({ ...c, ...range }));
+    commit(next);
+  };
 
   const handleApplyFilters = () => {
-    setAppliedFilters(draftFilters);
+    commit(draftFilters);
     setIsFilterOpen(false);
   };
 
   const handleClearFilters = () => {
     setDraftFilters(defaultFilters);
-    setAppliedFilters(defaultFilters);
+    commit(defaultFilters);
     setIsFilterOpen(false);
   };
 
@@ -53,8 +85,8 @@ export default function TrialBalancePage() {
       <ReportLayout.Header className="sm:justify-end">
         <ReportLayout.Actions>
           <DateRangePicker
-            value={dateRange}
-            onChange={handleDateChange}
+            value={{ fromDate: appliedFilters.fromDate, toDate: appliedFilters.toDate }}
+            onChange={handleDateRangeChange}
             className="w-full sm:w-80"
           />
           <Button
@@ -110,7 +142,13 @@ export default function TrialBalancePage() {
       >
         <TrialBalanceFilterForm
           values={draftFilters}
-          onChange={(v) => setDraftFilters((c) => ({ ...c, ...v }))}
+          onChange={(v) => {
+            const next = { ...draftFilters, ...v };
+            setDraftFilters(next);
+            if ("fromDate" in v || "toDate" in v) {
+              commit({ ...appliedFilters, fromDate: next.fromDate, toDate: next.toDate });
+            }
+          }}
           onApply={handleApplyFilters}
           onClear={handleClearFilters}
         />

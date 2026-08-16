@@ -1,3 +1,4 @@
+using backend.Features.Audit;
 using backend.Features.Auth;
 using backend.Features.Accounting.Journals;
 using backend.Features.Inventory;
@@ -129,6 +130,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<DeliveryNote> DeliveryNotes => Set<DeliveryNote>();
 
     public DbSet<DeliveryNoteItem> DeliveryNoteItems => Set<DeliveryNoteItem>();
+
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

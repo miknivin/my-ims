@@ -31,6 +31,7 @@ public sealed class SettingsConfiguration : IEntityTypeConfiguration<AppSettings
             general.Property(value => value.Country).HasMaxLength(120).HasColumnName("country");
             general.Property(value => value.Gstin).HasMaxLength(30).HasColumnName("gstin");
             general.Property(value => value.Pan).HasMaxLength(20).HasColumnName("pan");
+            general.Property(value => value.TimeZoneId).HasMaxLength(100).HasColumnName("time_zone_id");
         });
 
         builder.OwnsOne(current => current.InventorySettings, inventory =>

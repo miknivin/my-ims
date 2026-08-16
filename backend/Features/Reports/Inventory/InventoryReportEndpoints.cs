@@ -8,6 +8,8 @@ public static class InventoryReportEndpoints
                        .WithTags("Reports - Inventory");
 
         group.MapGet("/stock-summary", StockSummaryHandlers.GetAsync);
+        group.MapGet("/stock-summary-enhanced", StockSummaryEnhancedHandlers.GetAsync);
+        group.MapGet("/stock-statement", StockStatementHandlers.GetAsync);
         group.MapGet("/item-wise-stock", ItemWiseStockHandlers.GetAsync);
         group.MapGet("/stock-movement", StockMovementHandlers.GetAsync);
         group.MapGet("/inventory-valuation", InventoryValuationHandlers.GetAsync);

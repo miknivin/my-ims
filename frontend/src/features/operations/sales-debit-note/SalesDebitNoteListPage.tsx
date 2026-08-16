@@ -33,6 +33,7 @@ export default function SalesDebitNoteListPage() {
             documentLabel="SDN No"
             counterpartyLabel="Customer"
             emptyMessage="No sales debit notes yet."
+            viewBasePath="/operations/adjustments/sales-debit-notes"
           />
         </ComponentCard>
       </div>

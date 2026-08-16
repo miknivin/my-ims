@@ -1,6 +1,7 @@
 using backend.Features.Masters.Customers;
 using backend.Features.Transactions.SalesInvoices;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Inventory.DeliveryNotes;
@@ -35,7 +36,7 @@ internal static class DeliveryNoteHandlers
             : TypedResults.Ok(new ApiResponse<DeliveryNoteDto>(true, "Delivery note fetched successfully.", DeliveryNoteDto.FromEntity(dn)));
     }
 
-    internal static async Task<IResult> CreateAsync(CreateDeliveryNoteRequest request, AppDbContext db, CancellationToken ct)
+    internal static async Task<IResult> CreateAsync(CreateDeliveryNoteRequest request, AppDbContext db, ReportInvalidationService sseService, CancellationToken ct)
     {
         var build = BuildDeliveryNote(request);
         if (build.Error is not null)
@@ -71,13 +72,14 @@ internal static class DeliveryNoteHandlers
                 return TypedResults.BadRequest(new ApiResponse<object>(false, effectsError, null));
         }
         await db.SaveChangesAsync(ct);
+        if (dn.Status == DeliveryNoteStatuses.Submitted) sseService.Publish(InvalidationGroups.DnPosted);
 
         var created = await BuildQuery(db).FirstAsync(x => x.Id == dn.Id, ct);
         return TypedResults.Created($"/api/inventory/delivery-notes/{dn.Id}",
             new ApiResponse<DeliveryNoteDto>(true, "Delivery note created successfully.", DeliveryNoteDto.FromEntity(created)));
     }
 
-    internal static async Task<IResult> UpdateStatusAsync(Guid id, UpdateDeliveryNoteStatusRequest request, AppDbContext db, CancellationToken ct)
+    internal static async Task<IResult> UpdateStatusAsync(Guid id, UpdateDeliveryNoteStatusRequest request, AppDbContext db, ReportInvalidationService sseService, CancellationToken ct)
     {
         var dn = await BuildQuery(db).FirstOrDefaultAsync(x => x.Id == id, ct);
         if (dn is null)
@@ -116,6 +118,7 @@ internal static class DeliveryNoteHandlers
         dn.Status = nextStatus;
         dn.UpdatedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync(ct);
+        sseService.Publish(InvalidationGroups.DnPosted);
 
         var updated = await BuildQuery(db).FirstAsync(x => x.Id == id, ct);
         return TypedResults.Ok(new ApiResponse<DeliveryNoteDto>(true, "Delivery note updated successfully.", DeliveryNoteDto.FromEntity(updated)));
@@ -179,7 +182,7 @@ internal static class DeliveryNoteHandlers
         var issueLines = dn.Items
             .OrderBy(i => i.SerialNo)
             .ThenBy(i => i.Id)
-            .Select(i => new InventoryIssuePostingLine(i.Id, i.ProductId, i.WarehouseId ?? Guid.Empty, i.Quantity, i.Remark))
+            .Select(i => new InventoryIssuePostingLine(i.Id, i.ProductId, i.WarehouseId ?? Guid.Empty, i.Quantity, i.Remark ?? i.ProductNameSnapshot))
             .ToList();
 
         var issueResult = await InventoryPostingService.ApplyIssuesAsync(

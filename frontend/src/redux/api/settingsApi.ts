@@ -18,6 +18,7 @@ export interface AppSettings {
     country: string | null;
     gstin: string | null;
     pan: string | null;
+    timeZoneId: string;
   };
   inventorySettings: {
     stockControl: {
@@ -84,6 +85,7 @@ export interface AppSettingsPayload {
     country: string | null;
     gstin: string | null;
     pan: string | null;
+    timeZoneId: string | null;
   };
   inventorySettings: {
     stockControl: {

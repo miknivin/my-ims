@@ -11,6 +11,11 @@ public sealed class StockLedgerEntryConfiguration : IEntityTypeConfiguration<Sto
 
         builder.HasKey(current => current.Id);
 
+        builder.Property(current => current.SeqNo)
+            .UseIdentityAlwaysColumn()
+            .ValueGeneratedOnAdd();
+
+
         builder.Property(current => current.QuantityChange).HasColumnType("numeric(18,2)");
         builder.Property(current => current.ValuationRate).HasColumnType("numeric(18,4)");
         builder.Property(current => current.ValueChange).HasColumnType("numeric(18,2)");

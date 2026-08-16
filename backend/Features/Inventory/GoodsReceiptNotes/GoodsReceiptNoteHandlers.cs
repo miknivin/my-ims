@@ -6,6 +6,7 @@ using backend.Features.Transactions.PurchaseInvoices;
 using backend.Features.Masters.Warehouses;
 using backend.Features.Transactions.PurchaseOrders;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Inventory.GoodsReceiptNotes;
@@ -111,15 +112,17 @@ internal static class GoodsReceiptNoteHandlers
             }
         }
 
+        await using var createTx = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await SyncPurchaseOrderReceivedQuantitiesAsync(dbContext, goodsReceiptNote.SourceRef.PurchaseOrderId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await createTx.CommitAsync(cancellationToken);
 
         var created = await BuildQuery(dbContext).FirstAsync(current => current.Id == goodsReceiptNote.Id, cancellationToken);
         return TypedResults.Created($"/api/inventory/goods-receipt-notes/{goodsReceiptNote.Id}", new ApiResponse<GoodsReceiptNoteDto>(true, "Goods receipt note created successfully.", GoodsReceiptNoteDto.FromEntity(created)));
     }
 
-    internal static async Task<IResult> UpdateStatusAsync(Guid id, UpdateGoodsReceiptNoteStatusRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    internal static async Task<IResult> UpdateStatusAsync(Guid id, UpdateGoodsReceiptNoteStatusRequest request, AppDbContext dbContext, ReportInvalidationService sseService, CancellationToken cancellationToken)
     {
         var goodsReceiptNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (goodsReceiptNote is null)
@@ -193,11 +196,14 @@ internal static class GoodsReceiptNoteHandlers
         goodsReceiptNote.Status = nextStatus;
         goodsReceiptNote.UpdatedAtUtc = DateTime.UtcNow;
 
+        await using var statusTx = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await SyncPurchaseOrderReceivedQuantitiesAsync(dbContext, goodsReceiptNote.SourceRef.PurchaseOrderId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await statusTx.CommitAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        sseService.Publish(InvalidationGroups.GrnPosted);
         return TypedResults.Ok(new ApiResponse<GoodsReceiptNoteDto>(true, "Goods receipt note updated successfully.", GoodsReceiptNoteDto.FromEntity(updated)));
     }
 
@@ -537,7 +543,7 @@ internal static class GoodsReceiptNoteHandlers
                 item.WarehouseId ?? Guid.Empty,
                 item.Quantity + item.FocQuantity,
                 item.TaxableAmount,
-                item.Remark ?? goodsReceiptNote.General.Notes))
+                item.Remark ?? item.ProductNameSnapshot))
             .ToList();
 
     private static string? ValidateStatusTransition(string currentStatus, string nextStatus)
@@ -566,6 +572,52 @@ internal static class GoodsReceiptNoteHandlers
                 current.SourceRef.ReferenceId == goodsReceiptId &&
                 current.Status == PurchaseInvoiceStatus.Submitted,
             cancellationToken);
+
+    internal static async Task<IResult> UpdateAsync(Guid id, CreateGoodsReceiptNoteRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var goodsReceiptNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+        if (goodsReceiptNote is null)
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Goods receipt note not found.", null));
+
+        if (goodsReceiptNote.Status != GoodsReceiptStatuses.Draft)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, "Only Draft goods receipt notes can be edited.", null));
+
+        var buildResult = BuildGoodsReceiptNoteRequest(request.SourceRef, request.Document, request.VendorInformation, request.Logistics, request.General, request.Items, request.Footer);
+        if (buildResult.Error is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, buildResult.Error, null));
+
+        buildResult.Document.No = goodsReceiptNote.Document.No;
+
+        var resolutionError = await ResolveReferencesAsync(dbContext, buildResult, cancellationToken);
+        if (resolutionError is not null)
+            return TypedResults.BadRequest(new ApiResponse<object>(false, resolutionError, null));
+
+        goodsReceiptNote.SourceRef = buildResult.SourceRef;
+        goodsReceiptNote.Document = buildResult.Document;
+        goodsReceiptNote.VendorInformation = buildResult.VendorInformation;
+        goodsReceiptNote.Logistics = buildResult.Logistics;
+        goodsReceiptNote.General = buildResult.General;
+        goodsReceiptNote.Footer = buildResult.Footer;
+        goodsReceiptNote.UpdatedAtUtc = DateTime.UtcNow;
+
+        dbContext.RemoveRange(goodsReceiptNote.Items);
+        goodsReceiptNote.Items = buildResult.Items;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        return TypedResults.Ok(new ApiResponse<GoodsReceiptNoteDto>(true, "Goods receipt note updated successfully.", GoodsReceiptNoteDto.FromEntity(updated)));
+    }
+
+    internal static async Task<IResult> DownloadPdfAsync(Guid id, AppDbContext dbContext, GoodsReceiptNotePdfService pdfService, CancellationToken cancellationToken)
+    {
+        var goodsReceiptNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+        if (goodsReceiptNote is null)
+            return TypedResults.NotFound(new ApiResponse<object>(false, "Goods receipt note not found.", null));
+
+        var pdfBytes = await pdfService.GeneratePdfAsync(goodsReceiptNote);
+        return Results.File(pdfBytes, "application/pdf", $"GRN-{goodsReceiptNote.Document.No}.pdf");
+    }
 
     internal static async Task<IResult> PreviewPdfAsync(
         CreateGoodsReceiptNoteRequest request,

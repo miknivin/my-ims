@@ -8,6 +8,7 @@ using backend.Features.Masters.Warehouses;
 using backend.Features.Transactions;
 using backend.Features.Transactions.PurchaseInvoices;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Transactions.PurchaseDebitNotes;
@@ -113,6 +114,7 @@ internal static class PurchaseDebitNoteHandlers
         Guid id,
         UpdatePurchaseDebitNoteStatusRequest request,
         AppDbContext dbContext,
+        ReportInvalidationService sseService,
         CancellationToken cancellationToken)
     {
         var purchaseDebitNote = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
@@ -152,6 +154,7 @@ internal static class PurchaseDebitNoteHandlers
         purchaseDebitNote.UpdatedAtUtc = DateTime.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        sseService.Publish(InvalidationGroups.PurchaseCreditDebitPosted);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
         return TypedResults.Ok(new ApiResponse<PurchaseDebitNoteDto>(

@@ -96,6 +96,7 @@ internal static class BillWiseReceiptJournalPosting
     {
         var settings = await dbContext.Settings
             .Include(current => current.AccountingSettings.DiscountAllowedLedger)
+            .OrderBy(s => s.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         if (settings is null)
         {

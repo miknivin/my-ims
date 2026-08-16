@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { CheckCircle, Download, Loader2, Pencil, XCircle } from "lucide-react";
+import { CheckCircle, Download, Eye, Loader2, Pencil, XCircle } from "lucide-react";
+import { useFmtDate } from "@/shared/hooks/useFmtDate";
 import {
   SalesOrderListItem,
   useDownloadSalesOrderPdfMutation,
@@ -21,22 +22,12 @@ interface SalesOrderTableProps {
   isError: boolean;
 }
 
-function formatDate(value: string, includeTime = false) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "-";
-  return parsed.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    ...(includeTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-  });
-}
-
 export default function SalesOrderTable({
   salesOrders,
   isLoading,
   isError,
 }: SalesOrderTableProps) {
+  const fmtDate = useFmtDate();
   const navigate = useNavigate();
   const [downloadPdf] = useDownloadSalesOrderPdfMutation();
   const [updateStatus] = useUpdateSalesOrderStatusMutation();
@@ -136,7 +127,7 @@ export default function SalesOrderTable({
                       {so.no}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(so.date)}
+                      {fmtDate(so.date)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
                       {so.customerName}
@@ -158,13 +149,21 @@ export default function SalesOrderTable({
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(so.createdAtUtc, true)}
+                      {fmtDate(so.createdAtUtc, true)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(so.updatedAtUtc, true)}
+                      {fmtDate(so.updatedAtUtc, true)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start">
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          title="View"
+                          onClick={() => navigate(`/operations/sales-order/${so.id}`)}
+                          className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                        >
+                          <Eye size={14} />
+                        </button>
                         <button
                           type="button"
                           title="Download PDF"

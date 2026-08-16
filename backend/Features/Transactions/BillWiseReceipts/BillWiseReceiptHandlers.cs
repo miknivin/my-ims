@@ -2,6 +2,7 @@ using backend.Features.Masters.Customers;
 using backend.Features.Masters.Ledgers;
 using backend.Features.Transactions.SalesInvoices;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Transactions.BillWiseReceipts;
@@ -92,6 +93,7 @@ internal static class BillWiseReceiptHandlers
     internal static async Task<IResult> CreateAsync(
         CreateBillWiseReceiptRequest request,
         AppDbContext dbContext,
+        ReportInvalidationService sseService,
         CancellationToken cancellationToken)
     {
         var buildResult = BuildBillWiseReceiptRequest(
@@ -144,6 +146,7 @@ internal static class BillWiseReceiptHandlers
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var created = await BuildQuery(dbContext).FirstAsync(current => current.Id == buildResult.Receipt.Id, cancellationToken);
+        if (buildResult.Receipt.Status == BillWiseDocumentStatus.Submitted) sseService.Publish(InvalidationGroups.ReceiptPosted);
         return TypedResults.Created(
             $"/api/transactions/bill-wise-receipts/{created.Id}",
             new ApiResponse<BillWiseReceiptDto>(true, "Bill wise receipt created successfully.", BillWiseReceiptDto.FromEntity(created)));
@@ -153,6 +156,7 @@ internal static class BillWiseReceiptHandlers
         Guid id,
         UpdateBillWiseReceiptStatusRequest request,
         AppDbContext dbContext,
+        ReportInvalidationService sseService,
         CancellationToken cancellationToken)
     {
         var receipt = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
@@ -211,6 +215,7 @@ internal static class BillWiseReceiptHandlers
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        sseService.Publish(InvalidationGroups.ReceiptPosted);
         return TypedResults.Ok(new ApiResponse<BillWiseReceiptDto>(
             true,
             "Bill wise receipt updated successfully.",

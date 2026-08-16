@@ -1,3 +1,5 @@
+import { useNavigate } from "react-router";
+import { Eye } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -5,7 +7,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/components/ui/table";
-import { formatDate, getStatusClass } from "./types";
+import { useFmtDate } from "@/shared/hooks/useFmtDate";
+import { getStatusClass } from "./types";
 
 interface BillWiseDocumentListBase {
   id: string;
@@ -28,6 +31,7 @@ interface BillWiseDocumentTableProps<TRow extends BillWiseDocumentListBase> {
   partyLabel: string;
   emptyMessage: string;
   getPartyName: (row: TRow) => string;
+  viewBasePath?: string;
 }
 
 export default function BillWiseDocumentTable<
@@ -40,7 +44,11 @@ export default function BillWiseDocumentTable<
   partyLabel,
   emptyMessage,
   getPartyName,
+  viewBasePath,
 }: BillWiseDocumentTableProps<TRow>) {
+  const fmtDate = useFmtDate();
+  const navigate = useNavigate();
+
   if (isLoading) {
     return (
       <div className="flex justify-center p-6 text-gray-500 dark:text-gray-400">
@@ -91,6 +99,11 @@ export default function BillWiseDocumentTable<
                 <TableCell isHeader className="px-4 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
                   Updated
                 </TableCell>
+                {viewBasePath && (
+                  <TableCell isHeader className="px-4 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Actions
+                  </TableCell>
+                )}
               </TableRow>
             </TableHeader>
 
@@ -101,7 +114,7 @@ export default function BillWiseDocumentTable<
                     {row.no}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(row.date)}
+                    {fmtDate(row.date)}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
                     {getPartyName(row)}
@@ -126,8 +139,20 @@ export default function BillWiseDocumentTable<
                     </span>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(row.updatedAtUtc, true)}
+                    {fmtDate(row.updatedAtUtc, true)}
                   </TableCell>
+                  {viewBasePath && (
+                    <TableCell className="px-4 py-3 text-start">
+                      <button
+                        type="button"
+                        title="View"
+                        onClick={() => navigate(`${viewBasePath}/${row.id}`)}
+                        className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                      >
+                        <Eye size={14} />
+                      </button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

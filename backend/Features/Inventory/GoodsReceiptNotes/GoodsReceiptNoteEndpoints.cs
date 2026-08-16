@@ -9,7 +9,9 @@ public static class GoodsReceiptNoteEndpoints
         group.MapGet("/", GoodsReceiptNoteHandlers.GetAllAsync);
         group.MapGet("/{id:guid}", GoodsReceiptNoteHandlers.GetByIdAsync);
         group.MapPost("/", GoodsReceiptNoteHandlers.CreateAsync);
+        group.MapPut("/{id:guid}", GoodsReceiptNoteHandlers.UpdateAsync);
         group.MapPost("/preview-pdf", GoodsReceiptNoteHandlers.PreviewPdfAsync);
+        group.MapGet("/{id:guid}/pdf", GoodsReceiptNoteHandlers.DownloadPdfAsync);
         group.MapPatch("/{id:guid}", GoodsReceiptNoteHandlers.UpdateStatusAsync);
 
         return app;

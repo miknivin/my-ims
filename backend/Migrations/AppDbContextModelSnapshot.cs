@@ -177,6 +177,60 @@ namespace backend.Migrations
                     b.ToTable("journal_vouchers", (string)null);
                 });
 
+            modelBuilder.Entity("backend.Features.Audit.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("action");
+
+                    b.Property<DateTime>("ChangedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at_utc");
+
+                    b.Property<Guid>("EntityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("entity_id");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("entity_type");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("UserEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("user_email");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangedAtUtc")
+                        .HasDatabaseName("ix_audit_logs_changed_at");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_audit_logs_user_id");
+
+                    b.HasIndex("EntityType", "EntityId")
+                        .HasDatabaseName("ix_audit_logs_entity");
+
+                    b.ToTable("audit_logs", (string)null);
+                });
+
             modelBuilder.Entity("backend.Features.Auth.Department", b =>
                 {
                     b.Property<Guid>("Id")
@@ -711,6 +765,12 @@ namespace backend.Migrations
                     b.Property<string>("Remarks")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<long>("SeqNo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("SeqNo"));
 
                     b.Property<Guid>("SourceId")
                         .HasColumnType("uuid");
@@ -4603,6 +4663,12 @@ namespace backend.Migrations
                                 .HasMaxLength(120)
                                 .HasColumnType("character varying(120)")
                                 .HasColumnName("state");
+
+                            b1.Property<string>("TimeZoneId")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("time_zone_id");
 
                             b1.HasKey("AppSettingsId");
 

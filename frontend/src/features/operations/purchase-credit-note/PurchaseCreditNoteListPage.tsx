@@ -33,6 +33,7 @@ export default function PurchaseCreditNoteListPage() {
             documentLabel="PCN No"
             counterpartyLabel="Vendor"
             emptyMessage="No purchase credit notes yet."
+            viewBasePath="/operations/adjustments/purchase-credit-notes"
           />
         </ComponentCard>
       </div>

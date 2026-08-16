@@ -33,6 +33,7 @@ export default function SalesCreditNoteListPage() {
             documentLabel="SCN No"
             counterpartyLabel="Customer"
             emptyMessage="No sales credit notes yet."
+            viewBasePath="/operations/adjustments/sales-credit-notes"
           />
         </ComponentCard>
       </div>

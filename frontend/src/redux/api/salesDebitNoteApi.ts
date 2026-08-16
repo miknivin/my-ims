@@ -13,6 +13,51 @@ export type SalesDebitNoteTaxApplication =
   | "After Discount"
   | "Before Discount";
 
+export interface SalesDebitNoteLineItem {
+  id: string;
+  sno: number;
+  productNameSnapshot: string;
+  hsnCode: string | null;
+  unitName: string;
+  quantity: number;
+  rate: number;
+  grossAmount: number;
+  discountPercent: number;
+  discountAmount: number;
+  taxableAmount: number;
+  taxPercent: number;
+  taxAmount: number;
+  lineTotal: number;
+  warehouseId: string | null;
+  warehouseName: string | null;
+}
+
+export interface SalesDebitNoteAddition {
+  id: string;
+  type: "Addition" | "Deduction";
+  ledgerNameSnapshot: string;
+  description: string | null;
+  amount: number;
+}
+
+export interface SalesDebitNote {
+  id: string;
+  noteNature: string;
+  affectsInventory: boolean;
+  inventoryEffect: string;
+  sourceRef: { referenceId: string | null; referenceNo: string };
+  document: { voucherType: string; no: string; date: string; dueDate: string };
+  customerInformation: { customerNameSnapshot: string; address: string };
+  financialDetails: { paymentMode: string; invoiceNo: string | null; lrNo: string | null; currencyCodeSnapshot: string | null; balance: number };
+  general: { notes: string | null; taxable: boolean; taxApplication: string; interState: boolean };
+  items: SalesDebitNoteLineItem[];
+  additions: SalesDebitNoteAddition[];
+  footer: { notes: string | null; total: number; discount: number; addition: number; deduction: number; paid: number; netTotal: number };
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
 export interface SalesDebitNoteListItem {
   id: string;
   no: string;
@@ -99,6 +144,11 @@ export const salesDebitNoteApi = createApi({
         response.data,
       providesTags: ["SalesDebitNote"],
     }),
+    getSalesDebitNoteById: builder.query<SalesDebitNote, string>({
+      query: (id) => `/${id}`,
+      transformResponse: (response: ApiResponse<SalesDebitNote>) => response.data,
+      providesTags: ["SalesDebitNote"],
+    }),
     createSalesDebitNote: builder.mutation<unknown, SalesDebitNotePayload>({
       query: (body) => ({
         url: "/",
@@ -112,5 +162,6 @@ export const salesDebitNoteApi = createApi({
 
 export const {
   useGetSalesDebitNotesQuery,
+  useGetSalesDebitNoteByIdQuery,
   useCreateSalesDebitNoteMutation,
 } = salesDebitNoteApi;

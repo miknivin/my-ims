@@ -3,6 +3,8 @@ import { Warehouse } from "@/redux/api/warehouseApi";
 import Button from "@/shared/components/ui/button/Button";
 
 export interface ItemWiseStockFilterValues {
+  fromDate: string;
+  toDate: string;
   categoryId: string;
   warehouseId: string;
   showZeroStock: boolean;
@@ -17,7 +19,7 @@ interface Props {
   onClear: () => void;
 }
 
-const SELECT_CLASS =
+const INPUT_CLASS =
   "h-11 w-full rounded-lg border border-gray-300 bg-transparent px-4 py-2.5 text-sm text-gray-800 shadow-theme-xs focus:border-brand-300 focus:outline-hidden focus:ring-3 focus:ring-brand-500/10 dark:border-gray-700 dark:bg-gray-900 dark:text-white/90";
 
 export default function ItemWiseStockFilterForm({
@@ -37,11 +39,29 @@ export default function ItemWiseStockFilterForm({
       }}
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Field label="From Date">
+          <input
+            type="date"
+            value={values.fromDate}
+            onChange={(e) => onChange({ fromDate: e.target.value })}
+            className={INPUT_CLASS}
+          />
+        </Field>
+
+        <Field label="To Date">
+          <input
+            type="date"
+            value={values.toDate}
+            onChange={(e) => onChange({ toDate: e.target.value })}
+            className={INPUT_CLASS}
+          />
+        </Field>
+
         <Field label="Category">
           <select
             value={values.categoryId}
             onChange={(e) => onChange({ categoryId: e.target.value })}
-            className={SELECT_CLASS}
+            className={INPUT_CLASS}
           >
             <option value="">All Categories</option>
             {categories.map((c) => (
@@ -56,7 +76,7 @@ export default function ItemWiseStockFilterForm({
           <select
             value={values.warehouseId}
             onChange={(e) => onChange({ warehouseId: e.target.value })}
-            className={SELECT_CLASS}
+            className={INPUT_CLASS}
           >
             <option value="">All Warehouses</option>
             {warehouses.map((w) => (

@@ -38,6 +38,7 @@ public sealed class GeneralSettings
     public string? Country { get; set; }
     public string? Gstin { get; set; }
     public string? Pan { get; set; }
+    public string TimeZoneId { get; set; } = "Asia/Kolkata";
 }
 
 public sealed class InventorySettings

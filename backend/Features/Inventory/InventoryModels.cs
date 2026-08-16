@@ -59,6 +59,8 @@ public sealed class StockLedgerEntry
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
+    public long SeqNo { get; set; }
+
     public Guid ItemId { get; set; }
     public Product? Item { get; set; }
 

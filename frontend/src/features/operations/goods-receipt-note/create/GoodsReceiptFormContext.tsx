@@ -38,12 +38,14 @@ const GoodsReceiptFormContext = createContext<
 
 export function GoodsReceiptFormProvider({
   children,
+  initialState,
 }: {
   children: React.ReactNode;
+  initialState?: GoodsReceiptFormState;
 }) {
-  const [state, setState] = useState<GoodsReceiptFormState>(() => {
-    return loadGoodsReceiptDraft() ?? createGoodsReceiptFormState();
-  });
+  const [state, setState] = useState<GoodsReceiptFormState>(
+    () => initialState ?? loadGoodsReceiptDraft() ?? createGoodsReceiptFormState(),
+  );
 
   const value = useMemo<GoodsReceiptFormContextValue>(
     () => ({

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { CheckCircle, Download, Loader2, XCircle } from "lucide-react";
+import { useNavigate } from "react-router";
+import { CheckCircle, Download, Eye, Loader2, XCircle } from "lucide-react";
+import { useFmtDate } from "@/shared/hooks/useFmtDate";
 import {
   PurchaseInvoiceListItem,
   useDownloadPurchaseInvoicePdfMutation,
@@ -20,31 +22,13 @@ interface PurchaseInvoiceTableProps {
   isError: boolean;
 }
 
-function formatDate(value: string, includeTime = false) {
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return "-";
-  }
-
-  return parsed.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    ...(includeTime
-      ? {
-          hour: "2-digit",
-          minute: "2-digit",
-        }
-      : {}),
-  });
-}
-
 export default function PurchaseInvoiceTable({
   purchaseInvoices,
   isLoading,
   isError,
 }: PurchaseInvoiceTableProps) {
+  const fmtDate = useFmtDate();
+  const navigate = useNavigate();
   const [updateStatus] = useUpdatePurchaseInvoiceStatusMutation();
   const [downloadPdf] = useDownloadPurchaseInvoicePdfMutation();
   const [actionId, setActionId] = useState<string | null>(null);
@@ -159,7 +143,7 @@ export default function PurchaseInvoiceTable({
                       {pi.no}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(pi.date)}
+                      {fmtDate(pi.date)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
                       {pi.vendorName}
@@ -181,13 +165,21 @@ export default function PurchaseInvoiceTable({
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(pi.createdAtUtc, true)}
+                      {fmtDate(pi.createdAtUtc, true)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(pi.updatedAtUtc, true)}
+                      {fmtDate(pi.updatedAtUtc, true)}
                     </TableCell>
                     <TableCell className="px-4 py-3 text-start">
                       <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          title="View"
+                          onClick={() => navigate(`/operations/purchase-invoice/${pi.id}`)}
+                          className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                        >
+                          <Eye size={14} />
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleDownload(pi.id, pi.no)}

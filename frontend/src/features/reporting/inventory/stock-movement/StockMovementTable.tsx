@@ -1,5 +1,6 @@
 import { StockMovementRow } from "@/redux/api/inventoryReportsApi";
 import { ReportLayout } from "@/features/reporting/components";
+import { useFmtDate } from "@/shared/hooks/useFmtDate";
 
 interface Props {
   rows: StockMovementRow[];
@@ -11,6 +12,9 @@ interface Props {
 
 const fmt = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const splitPascalCase = (s: string) =>
+  s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
 
 const TH = "px-3 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400";
 const TD = "px-3 py-2.5 text-right text-sm tabular-nums text-gray-700 dark:text-gray-300";
@@ -32,6 +36,7 @@ export default function StockMovementTable({
   isLoading,
   isError,
 }: Props) {
+  const fmtDate = useFmtDate();
   if (isLoading) {
     return (
       <div className="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -81,15 +86,15 @@ export default function StockMovementTable({
         ) : (
           rows.map((row) => (
             <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
-              <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300">
-                {new Date(row.postingDateUtc).toLocaleDateString()}
+              <td className="px-3 py-2.5 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                {fmtDate(row.postingDateUtc, true)}
               </td>
               <td className="px-3 py-2.5">
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${movementBadgeClass(row.movementType)}`}>
                   {row.movementType}
                 </span>
               </td>
-              <td className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400">{row.sourceType}</td>
+              <td className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400">{splitPascalCase(row.sourceType)}</td>
               <td className="px-3 py-2.5 text-sm text-gray-500 dark:text-gray-400">{row.warehouseName ?? "—"}</td>
               <td className={`${TD} ${row.quantityChange < 0 ? "text-red-600 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>
                 {fmt(row.quantityChange)}

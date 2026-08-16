@@ -8,6 +8,7 @@ using backend.Features.Masters.Vendors;
 using backend.Features.Masters.Warehouses;
 using backend.Features.Transactions.PurchaseOrders;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Features.Transactions.PurchaseInvoices;
@@ -56,7 +57,7 @@ internal static class PurchaseInvoiceHandlers
             : TypedResults.Ok(new ApiResponse<PurchaseInvoiceDto>(true, "Purchase invoice fetched successfully.", PurchaseInvoiceDto.FromEntity(purchaseInvoice)));
     }
 
-    internal static async Task<IResult> CreateAsync(CreatePurchaseInvoiceRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    internal static async Task<IResult> CreateAsync(CreatePurchaseInvoiceRequest request, AppDbContext dbContext, ReportInvalidationService sseService, CancellationToken cancellationToken)
     {
         var buildResult = BuildPurchaseInvoiceRequest(request.SourceRef, request.Document, request.VendorInformation, request.FinancialDetails, request.ProductInformation, request.General, request.Items, request.Additions, request.Footer);
         if (buildResult.Error is not null)
@@ -112,12 +113,13 @@ internal static class PurchaseInvoiceHandlers
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        if (purchaseInvoice.Status == PurchaseInvoiceStatus.Submitted) sseService.Publish(InvalidationGroups.PurchasePosted);
 
         var created = await BuildQuery(dbContext).FirstAsync(current => current.Id == purchaseInvoice.Id, cancellationToken);
         return TypedResults.Created($"/api/transactions/purchase-invoices/{purchaseInvoice.Id}", new ApiResponse<PurchaseInvoiceDto>(true, "Purchase invoice created successfully.", PurchaseInvoiceDto.FromEntity(created)));
     }
 
-    internal static async Task<IResult> UpdateStatusAsync(Guid id, UpdatePurchaseInvoiceStatusRequest request, AppDbContext dbContext, CancellationToken cancellationToken)
+    internal static async Task<IResult> UpdateStatusAsync(Guid id, UpdatePurchaseInvoiceStatusRequest request, AppDbContext dbContext, ReportInvalidationService sseService, CancellationToken cancellationToken)
     {
         var purchaseInvoice = await BuildQuery(dbContext).FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
         if (purchaseInvoice is null)
@@ -191,6 +193,7 @@ internal static class PurchaseInvoiceHandlers
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var updated = await BuildQuery(dbContext).FirstAsync(current => current.Id == id, cancellationToken);
+        sseService.Publish(InvalidationGroups.PurchasePosted);
         return TypedResults.Ok(new ApiResponse<PurchaseInvoiceDto>(true, "Purchase invoice updated successfully.", PurchaseInvoiceDto.FromEntity(updated)));
     }
 

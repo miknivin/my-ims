@@ -3,9 +3,11 @@ import { Outlet } from "react-router";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
+import { useSseUpdates } from "@/features/sse/useSseUpdates";
 
 const LayoutContent: React.FC = () => {
   const { isMobileOpen } = useSidebar();
+  useSseUpdates();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">

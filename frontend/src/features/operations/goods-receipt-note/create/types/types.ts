@@ -1,4 +1,4 @@
-import type { GoodsReceiptMode, GoodsReceiptNotePayload, TaxableMode } from "@/redux/api/goodsReceiptNoteApi";
+import type { GoodsReceiptMode, GoodsReceiptNote, GoodsReceiptNotePayload, TaxableMode } from "@/redux/api/goodsReceiptNoteApi";
 
 export const GOODS_RECEIPT_NOTE_DRAFT_STORAGE_KEY =
   "ims.goods-receipt-note.draft";
@@ -303,6 +303,72 @@ export function loadGoodsReceiptDraft() {
   } catch {
     return null;
   }
+}
+
+export function fromGoodsReceiptNoteDto(dto: GoodsReceiptNote): GoodsReceiptFormState {
+  return createGoodsReceiptFormState({
+    sourceRef: {
+      mode: dto.sourceRef.mode,
+      purchaseOrderId: dto.sourceRef.purchaseOrderId,
+      purchaseOrderNo: dto.sourceRef.purchaseOrderNo ?? "",
+      directLpoNo: dto.sourceRef.directLpoNo ?? "",
+      directVendorInvoiceNo: dto.sourceRef.directVendorInvoiceNo ?? "",
+    },
+    document: {
+      voucherType: dto.document.voucherType,
+      no: dto.document.no,
+      date: dto.document.date,
+      deliveryDate: dto.document.deliveryDate ?? "",
+    },
+    vendorInformation: {
+      vendorId: dto.vendorInformation.vendorId,
+      vendorLabel: dto.vendorInformation.vendorNameSnapshot,
+      address: dto.vendorInformation.address,
+      attention: dto.vendorInformation.attention ?? "",
+      phone: dto.vendorInformation.phone ?? "",
+    },
+    logistics: {
+      lrService: dto.logistics.lrService ?? "",
+      lrNo: dto.logistics.lrNo ?? "",
+      lrDate: dto.logistics.lrDate ?? "",
+      eWayBillNo: dto.logistics.eWayBillNo ?? "",
+    },
+    general: {
+      ownProductsOnly: dto.general.ownProductsOnly,
+      taxableMode: dto.general.taxableMode,
+      notes: dto.general.notes ?? "",
+    },
+    items: dto.items.map((item, index) =>
+      createEmptyGoodsReceiptLine(index + 1, {
+        productId: item.productId,
+        productNameSnapshot: item.productNameSnapshot,
+        hsnCode: item.hsnCode ?? "",
+        code: item.code ?? "",
+        ubc: item.ubc ?? "",
+        unitId: item.unitId,
+        unitName: item.unitName,
+        warehouseId: item.warehouseId,
+        warehouseName: item.warehouseName ?? "",
+        fRate: `${item.fRate}`,
+        rate: `${item.rate}`,
+        quantity: `${item.quantity}`,
+        focQuantity: `${item.focQuantity}`,
+        discountPercent: `${item.discountPercent}`,
+        remark: item.remark ?? "",
+        sellingRate: `${item.sellingRate}`,
+        purchaseOrderLineId: item.purchaseOrderLineId,
+      }),
+    ),
+    footer: {
+      addition: `${dto.footer.addition}`,
+      discountFooter: `${dto.footer.discountFooter}`,
+      roundOff: `${dto.footer.roundOff}`,
+      netTotal: dto.footer.netTotal,
+      totalQty: dto.footer.totalQty,
+      totalFoc: dto.footer.totalFoc,
+      totalAmount: dto.footer.totalAmount,
+    },
+  });
 }
 
 export function toGoodsReceiptPayload(

@@ -21,6 +21,7 @@ public static class InventorySettingsResolver
     {
         var settings = await dbContext.Settings
             .AsNoTracking()
+            .OrderBy(s => s.CreatedAtUtc)
             .Select(current => new EffectiveInventorySettings(
                 current.InventorySettings.Costing.ValuationMethod == InventoryValuationMethod.FIFO
                     ? InventoryValuationMethod.FIFO

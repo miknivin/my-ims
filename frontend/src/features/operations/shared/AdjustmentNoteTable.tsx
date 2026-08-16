@@ -1,3 +1,6 @@
+import { useNavigate } from "react-router";
+import { Eye } from "lucide-react";
+import { useFmtDate } from "@/shared/hooks/useFmtDate";
 import {
   Table,
   TableBody,
@@ -26,27 +29,10 @@ interface AdjustmentNoteTableProps {
   documentLabel: string;
   counterpartyLabel: string;
   emptyMessage: string;
+  viewBasePath?: string;
 }
 
-function formatDate(value: string, includeTime = false) {
-  const parsed = new Date(value);
 
-  if (Number.isNaN(parsed.getTime())) {
-    return "-";
-  }
-
-  return parsed.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    ...(includeTime
-      ? {
-          hour: "2-digit",
-          minute: "2-digit",
-        }
-      : {}),
-  });
-}
 
 function getStatusClass(status: string) {
   if (status === "Draft" || status === "Pending") {
@@ -67,7 +53,11 @@ export default function AdjustmentNoteTable({
   documentLabel,
   counterpartyLabel,
   emptyMessage,
+  viewBasePath,
 }: AdjustmentNoteTableProps) {
+  const fmtDate = useFmtDate();
+  const navigate = useNavigate();
+
   if (isLoading) {
     return (
       <div className="flex justify-center p-6 text-gray-500 dark:text-gray-400">
@@ -118,6 +108,11 @@ export default function AdjustmentNoteTable({
                 <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
                   Updated
                 </TableCell>
+                {viewBasePath && (
+                  <TableCell isHeader className="px-5 py-3 text-start text-theme-xs font-medium text-gray-500 dark:text-gray-400">
+                    Actions
+                  </TableCell>
+                )}
               </TableRow>
             </TableHeader>
 
@@ -128,7 +123,7 @@ export default function AdjustmentNoteTable({
                     {note.no}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(note.date)}
+                    {fmtDate(note.date)}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
                     {note.counterpartyName}
@@ -150,11 +145,23 @@ export default function AdjustmentNoteTable({
                     </span>
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(note.createdAtUtc, true)}
+                    {fmtDate(note.createdAtUtc, true)}
                   </TableCell>
                   <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-500 dark:text-gray-400">
-                    {formatDate(note.updatedAtUtc, true)}
+                    {fmtDate(note.updatedAtUtc, true)}
                   </TableCell>
+                  {viewBasePath && (
+                    <TableCell className="px-4 py-3 text-start">
+                      <button
+                        type="button"
+                        title="View"
+                        onClick={() => navigate(`${viewBasePath}/${note.id}`)}
+                        className="rounded-lg border border-gray-200 p-2 text-gray-600 transition hover:bg-gray-50 dark:border-white/[0.08] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                      >
+                        <Eye size={14} />
+                      </button>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

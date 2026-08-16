@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using System.Threading.RateLimiting;
+using backend.Infrastructure.Sse;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.SystemConsole.Themes;
@@ -39,9 +41,11 @@ using backend.Features.Transactions.SalesCreditNotes;
 using backend.Features.Transactions.SalesDebitNotes;
 using backend.Features.Transactions.SalesInvoices;
 using backend.Features.Transactions.SalesOrders;
+using backend.Features.Audit;
 using backend.Infrastructure.Authentication;
 using backend.Infrastructure.Middleware;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -76,8 +80,14 @@ builder.Services.AddSingleton<SalesOrderPdfService>();
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<AuthBootstrapOptions>(builder.Configuration.GetSection(AuthBootstrapOptions.SectionName));
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddSingleton<AuditInterceptor>();
+builder.Services.AddSingleton<ReportInvalidationService>();
+
+builder.Services.AddDbContext<AppDbContext>((sp, options) =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+           .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
 
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key));
@@ -260,6 +270,26 @@ app.MapSettingsEndpoints();
 app.MapGoodsReceiptNoteEndpoints();
 app.MapInventoryBalanceEndpoints();
 app.MapDeliveryNoteEndpoints();
+app.MapAuditEndpoints();
+
+var sseJsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+app.MapGet("/api/events", async (
+    ReportInvalidationService sseService,
+    HttpContext ctx,
+    CancellationToken ct) =>
+{
+    ctx.Response.Headers.ContentType = "text/event-stream";
+    ctx.Response.Headers.CacheControl = "no-cache";
+    ctx.Response.Headers["X-Accel-Buffering"] = "no";
+    ctx.Response.Headers["Connection"] = "keep-alive";
+
+    await foreach (var evt in sseService.SubscribeAsync(ct))
+    {
+        var json = JsonSerializer.Serialize(evt, sseJsonOptions);
+        await ctx.Response.WriteAsync($"data: {json}\n\n", ct);
+        await ctx.Response.Body.FlushAsync(ct);
+    }
+}).RequireAuthorization();
 
 app.Run();
 

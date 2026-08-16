@@ -1,6 +1,7 @@
 using backend.Features.Masters.Ledgers;
 using backend.Infrastructure.Filtering;
 using backend.Infrastructure.Persistence;
+using backend.Infrastructure.Sse;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -92,6 +93,7 @@ internal static class JournalVoucherHandlers
     internal static async Task<IResult> CreateManualAsync(
         CreateManualJournalVoucherRequest request,
         AppDbContext dbContext,
+        ReportInvalidationService sseService,
         CancellationToken cancellationToken)
     {
         var validationError = await ValidateCreateManualAsync(request, dbContext, cancellationToken);
@@ -159,6 +161,7 @@ internal static class JournalVoucherHandlers
 
         dbContext.JournalVouchers.Add(voucher);
         await dbContext.SaveChangesAsync(cancellationToken);
+        sseService.Publish(InvalidationGroups.JournalPosted);
 
         var created = await dbContext.JournalVouchers
             .AsNoTracking()

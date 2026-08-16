@@ -24,7 +24,8 @@ public sealed record AppSettingsDto(
                 settings.General.Pincode,
                 settings.General.Country,
                 settings.General.Gstin,
-                settings.General.Pan),
+                settings.General.Pan,
+                settings.General.TimeZoneId),
             new InventorySettingsDto(
                 new InventoryStockControlSettingsDto(
                     settings.InventorySettings.StockControl.AllowNegativeStock,
@@ -90,7 +91,8 @@ public sealed record GeneralSettingsDto(
     string? Pincode,
     string? Country,
     string? Gstin,
-    string? Pan);
+    string? Pan,
+    string TimeZoneId);
 
 public sealed record InventorySettingsDto(
     InventoryStockControlSettingsDto StockControl,

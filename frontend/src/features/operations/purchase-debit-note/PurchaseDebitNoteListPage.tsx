@@ -33,6 +33,7 @@ export default function PurchaseDebitNoteListPage() {
             documentLabel="PDN No"
             counterpartyLabel="Vendor"
             emptyMessage="No purchase debit notes yet."
+            viewBasePath="/operations/adjustments/purchase-debit-notes"
           />
         </ComponentCard>
       </div>

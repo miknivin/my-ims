@@ -21,7 +21,8 @@ internal static class SettingsHandlers
             .Include(current => current.AccountingSettings.DefaultCashLedger)
             .Include(current => current.AccountingSettings.GrnAdditionLedger)
             .Include(current => current.AccountingSettings.GrnDiscountLedger)
-            .Include(current => current.AccountingSettings.RoundOffLedger);
+            .Include(current => current.AccountingSettings.RoundOffLedger)
+            .AsSplitQuery();
     }
 
     internal static async Task<IResult> GetAsync(AppDbContext dbContext, CancellationToken cancellationToken)
@@ -91,7 +92,8 @@ internal static class SettingsHandlers
             Pincode = NormalizeOptional(request.General.Pincode),
             Country = NormalizeOptional(request.General.Country),
             Gstin = NormalizeOptional(request.General.Gstin),
-            Pan = NormalizeOptional(request.General.Pan)
+            Pan = NormalizeOptional(request.General.Pan),
+            TimeZoneId = NormalizeOptional(request.General.TimeZoneId) ?? "Asia/Kolkata"
         };
 
         if (string.IsNullOrWhiteSpace(general.BusinessName))
@@ -174,7 +176,7 @@ internal static class SettingsHandlers
 
     private static async Task<AppSettings> GetOrCreateSettingsAsync(AppDbContext dbContext, CancellationToken cancellationToken)
     {
-        var existing = await BuildQuery(dbContext).FirstOrDefaultAsync(cancellationToken);
+        var existing = await BuildQuery(dbContext).OrderBy(s => s.CreatedAtUtc).FirstOrDefaultAsync(cancellationToken);
         if (existing is not null)
         {
             return existing;

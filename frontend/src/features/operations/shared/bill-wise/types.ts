@@ -105,26 +105,6 @@ export function mergeOutstandingRows(
   });
 }
 
-export function formatDate(value: string, includeTime = false) {
-  const parsed = new Date(value);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return "-";
-  }
-
-  return parsed.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    ...(includeTime
-      ? {
-          hour: "2-digit",
-          minute: "2-digit",
-        }
-      : {}),
-  });
-}
-
 export function getStatusClass(status: string) {
   if (status === "Draft" || status === "Pending") {
     return "bg-warning-50 text-warning-700 dark:bg-warning-500/15 dark:text-warning-400";

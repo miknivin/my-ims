@@ -14,6 +14,51 @@ export type SalesCreditNoteTaxApplication =
   | "After Discount"
   | "Before Discount";
 
+export interface SalesCreditNoteLineItem {
+  id: string;
+  sno: number;
+  productNameSnapshot: string;
+  hsnCode: string | null;
+  unitName: string;
+  quantity: number;
+  rate: number;
+  grossAmount: number;
+  discountPercent: number;
+  discountAmount: number;
+  taxableAmount: number;
+  taxPercent: number;
+  taxAmount: number;
+  lineTotal: number;
+  warehouseId: string | null;
+  warehouseName: string | null;
+}
+
+export interface SalesCreditNoteAddition {
+  id: string;
+  type: "Addition" | "Deduction";
+  ledgerNameSnapshot: string;
+  description: string | null;
+  amount: number;
+}
+
+export interface SalesCreditNote {
+  id: string;
+  noteNature: string;
+  affectsInventory: boolean;
+  inventoryEffect: string;
+  sourceRef: { referenceId: string | null; referenceNo: string };
+  document: { voucherType: string; no: string; date: string; dueDate: string };
+  customerInformation: { customerNameSnapshot: string; address: string };
+  financialDetails: { paymentMode: string; invoiceNo: string | null; lrNo: string | null; currencyCodeSnapshot: string | null; balance: number };
+  general: { notes: string | null; taxable: boolean; taxApplication: string; interState: boolean };
+  items: SalesCreditNoteLineItem[];
+  additions: SalesCreditNoteAddition[];
+  footer: { notes: string | null; total: number; discount: number; addition: number; deduction: number; paid: number; netTotal: number };
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
 export interface SalesCreditNoteListItem {
   id: string;
   no: string;
@@ -100,6 +145,11 @@ export const salesCreditNoteApi = createApi({
         response.data,
       providesTags: ["SalesCreditNote"],
     }),
+    getSalesCreditNoteById: builder.query<SalesCreditNote, string>({
+      query: (id) => `/${id}`,
+      transformResponse: (response: ApiResponse<SalesCreditNote>) => response.data,
+      providesTags: ["SalesCreditNote"],
+    }),
     createSalesCreditNote: builder.mutation<
       unknown,
       SalesCreditNotePayload
@@ -116,5 +166,6 @@ export const salesCreditNoteApi = createApi({
 
 export const {
   useGetSalesCreditNotesQuery,
+  useGetSalesCreditNoteByIdQuery,
   useCreateSalesCreditNoteMutation,
 } = salesCreditNoteApi;

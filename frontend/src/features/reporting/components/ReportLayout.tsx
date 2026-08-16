@@ -1,4 +1,5 @@
-import { FC, ReactNode } from "react";
+import { FC, ReactNode, useState } from "react";
+import { Info } from "lucide-react";
 import PageBreadcrumb from "@/shared/components/common/PageBreadCrumb";
 
 type ReportLayoutRootProps = {
@@ -34,6 +35,7 @@ type ReportMetricProps = {
   label: string;
   value: ReactNode;
   hint?: string;
+  tooltip?: string;
   className?: string;
 };
 
@@ -125,8 +127,10 @@ ReportLayout.Metric = function ReportLayoutMetric({
   label,
   value,
   hint,
+  tooltip,
   className = "",
 }: ReportMetricProps) {
+  const [open, setOpen] = useState(false);
   return (
     <div
       className={`rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-white/[0.03] ${className}`}
@@ -134,8 +138,29 @@ ReportLayout.Metric = function ReportLayoutMetric({
       <p className="text-xs font-medium uppercase text-gray-500 dark:text-gray-400">
         {label}
       </p>
-      <div className="mt-2 text-xl font-semibold text-gray-800 dark:text-white/90">
-        {value}
+      <div className="mt-2 flex items-center gap-1.5">
+        <span className="text-xl font-semibold text-gray-800 dark:text-white/90">
+          {value}
+        </span>
+        {tooltip && (
+          <div className="relative inline-flex">
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              onMouseEnter={() => setOpen(true)}
+              onMouseLeave={() => setOpen(false)}
+              className="flex items-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+            >
+              <Info size={14} />
+            </button>
+            {open && (
+              <div className="absolute bottom-full left-1/2 z-20 mb-2 w-52 -translate-x-1/2 rounded-lg bg-gray-800 px-3 py-2 text-center text-xs text-white shadow-lg dark:bg-gray-700">
+                {tooltip}
+                <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-800 dark:border-t-gray-700" />
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {hint ? (
         <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{hint}</p>

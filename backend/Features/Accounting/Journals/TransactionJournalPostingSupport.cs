@@ -14,6 +14,7 @@ internal static class TransactionJournalPostingSupport
     {
         var settings = await dbContext.Settings
             .AsNoTracking()
+            .OrderBy(s => s.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         if (settings is null)
         {

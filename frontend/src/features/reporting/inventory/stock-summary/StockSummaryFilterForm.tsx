@@ -3,6 +3,8 @@ import { Warehouse } from "@/redux/api/warehouseApi";
 import Button from "@/shared/components/ui/button/Button";
 
 export interface StockSummaryFilterValues {
+  groupBy: "category" | "warehouse";
+  asOfDate: string;
   categoryId: string;
   warehouseId: string;
   showZeroStock: boolean;

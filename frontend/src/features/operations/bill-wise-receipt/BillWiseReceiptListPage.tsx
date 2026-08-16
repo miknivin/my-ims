@@ -34,6 +34,7 @@ export default function BillWiseReceiptListPage() {
             partyLabel="Customer"
             emptyMessage="No bill wise receipts yet."
             getPartyName={(row) => row.customerName}
+            viewBasePath="/operations/customer-receipts"
           />
         </ComponentCard>
       </div>

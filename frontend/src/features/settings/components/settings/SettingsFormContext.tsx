@@ -26,6 +26,7 @@ export type SettingsFormState = {
     country: string;
     gstin: string;
     pan: string;
+    timeZoneId: string;
   };
   inventorySettings: {
     stockControl: {
@@ -124,6 +125,7 @@ function createFormState(settings?: AppSettings | null): SettingsFormState {
       country: settings?.general.country ?? "",
       gstin: settings?.general.gstin ?? "",
       pan: settings?.general.pan ?? "",
+      timeZoneId: settings?.general.timeZoneId ?? "Asia/Kolkata",
     },
     inventorySettings: {
       stockControl: {
@@ -233,6 +235,7 @@ function toPayload(state: SettingsFormState): AppSettingsPayload {
       country: normalizeOptional(state.general.country),
       gstin: normalizeOptional(state.general.gstin),
       pan: normalizeOptional(state.general.pan),
+      timeZoneId: state.general.timeZoneId || null,
     },
     inventorySettings: {
       stockControl: {

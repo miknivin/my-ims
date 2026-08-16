@@ -145,9 +145,14 @@ export default function PurchaseRegisterPage() {
           values={draftFilters}
           statusOptions={statusOptions}
           sortOptions={sortOptions}
-          onChange={(values) =>
-            setDraftFilters((current) => ({ ...current, ...values }))
-          }
+          onChange={(values) => {
+            const next = { ...draftFilters, ...values };
+            setDraftFilters(next);
+            if ("fromDate" in values || "toDate" in values) {
+              setAppliedFilters((c) => ({ ...c, fromDate: next.fromDate, toDate: next.toDate }));
+              setPage(1);
+            }
+          }}
           onApply={handleApplyFilters}
           onClear={handleClearFilters}
           searchVendors={(keyword) =>

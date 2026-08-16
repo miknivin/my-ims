@@ -34,6 +34,7 @@ export default function BillWisePaymentListPage() {
             partyLabel="Vendor"
             emptyMessage="No bill wise payments yet."
             getPartyName={(row) => row.vendorName}
+            viewBasePath="/operations/supplier-payments"
           />
         </ComponentCard>
       </div>
